@@ -1,1 +1,1 @@
-"""Utility functions for the AI CLI assistant.""" 
+"""CLI utilities package.""" 
