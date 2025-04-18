@@ -7,7 +7,7 @@ from typing import Dict, Optional
 from datetime import datetime
 from rich import print
 from rich.table import Table
-from cli.utils.api import api_request, OLLAMA_AVAILABLE, get_available_local_models
+from cli.utils.api import api_request, get_available_local_models
 from cli.utils.formatting import print_json, print_error, print_success, print_info
 from cli.utils.config import get_config_value, set_config_value
 

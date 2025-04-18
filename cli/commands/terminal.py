@@ -5,7 +5,7 @@ from typing import List, Optional
 from rich import print
 from rich.console import Console
 from rich.panel import Panel
-from cli.utils.api import api_request, OLLAMA_AVAILABLE, get_available_local_models
+from cli.utils.api import api_request, get_available_local_models
 from cli.utils.formatting import print_error, print_success, print_info, print_warning
 
 app = typer.Typer(help="Get help with terminal commands")
@@ -15,8 +15,8 @@ console = Console()
 def suggest(
     description: str = typer.Argument(..., help="What you want to accomplish"),
     platform: str = typer.Option("auto", help="Platform (linux, mac, windows, or auto)"),
-    use_local: bool = typer.Option(False, "--local", "-l", help="Use local Ollama model instead of API backend"),
-    model: str = typer.Option("deepseek-r1:7b", "--model", "-m", help="Specify which local model to use (requires --local)"),
+    use_local: bool = typer.Option(True, "--local/--api", help="Use local AI model instead of API backend"),
+    model: str = typer.Option("deepseek-r1:7b", "--model", "-m", help="Specify which local model to use"),
     no_stream: bool = typer.Option(False, "--no-stream", help="Disable streaming for local models"),
     show_thinking: bool = typer.Option(True, "--show-thinking/--no-thinking", help="Show or hide model's thinking process")
 ):
@@ -35,17 +35,13 @@ def suggest(
     
     print(f"Suggesting commands for '{description}' on {platform}:")
     
-    if use_local and not OLLAMA_AVAILABLE:
-        print_warning("Ollama is not available. Falling back to API backend.")
-        use_local = False
-        
     if use_local:
         local_models = get_available_local_models()
         if not local_models:
-            print_warning("No local models found in Ollama. Falling back to API backend.")
+            print_warning("No local models available. Falling back to API backend.")
             use_local = False
         elif model not in local_models:
-            print_warning(f"Model '{model}' not found in Ollama. Available models: {', '.join(local_models)}")
+            print_warning(f"Model '{model}' not found. Available models: {', '.join(local_models)}")
             if "deepseek-r1:7b" in local_models:
                 model = "deepseek-r1:7b"
                 print_info(f"Using deepseek-r1:7b instead.")
@@ -66,7 +62,7 @@ def suggest(
         },
         loading_message=f"Finding terminal commands for {platform}...",
         use_local_model=use_local,
-        local_model_name=model if use_local else None
+        local_model_name=model
     )
     
     if "error" in response:
@@ -122,8 +118,8 @@ def suggest(
 @app.command()
 def explain(
     command: List[str] = typer.Argument(..., help="Command to explain"),
-    use_local: bool = typer.Option(False, "--local", "-l", help="Use local Ollama model instead of API backend"),
-    model: str = typer.Option("deepseek-r1:7b", "--model", "-m", help="Specify which local model to use (requires --local)"),
+    use_local: bool = typer.Option(True, "--local/--api", help="Use local AI model instead of API backend"),
+    model: str = typer.Option("deepseek-r1:7b", "--model", "-m", help="Specify which local model to use"),
     no_stream: bool = typer.Option(False, "--no-stream", help="Disable streaming for local models"),
     show_thinking: bool = typer.Option(True, "--show-thinking/--no-thinking", help="Show or hide model's thinking process")
 ):
@@ -131,17 +127,13 @@ def explain(
     full_command = " ".join(command)
     print(f"Explaining command: [bold]{full_command}[/bold]")
     
-    if use_local and not OLLAMA_AVAILABLE:
-        print_warning("Ollama is not available. Falling back to API backend.")
-        use_local = False
-        
     if use_local:
         local_models = get_available_local_models()
         if not local_models:
-            print_warning("No local models found in Ollama. Falling back to API backend.")
+            print_warning("No local models available. Falling back to API backend.")
             use_local = False
         elif model not in local_models:
-            print_warning(f"Model '{model}' not found in Ollama. Available models: {', '.join(local_models)}")
+            print_warning(f"Model '{model}' not found. Available models: {', '.join(local_models)}")
             if "deepseek-r1:7b" in local_models:
                 model = "deepseek-r1:7b"
                 print_info(f"Using deepseek-r1:7b instead.")
@@ -162,7 +154,7 @@ def explain(
         },
         loading_message=f"Analyzing command...",
         use_local_model=use_local,
-        local_model_name=model if use_local else None
+        local_model_name=model
     )
     
     if "error" in response:
@@ -205,7 +197,7 @@ def explain(
             # Display the AI-generated explanation for non-streaming mode
             explanation = response.get("text", "No explanation generated")
             model_info = f" (using {response.get('model_used', 'unknown model')})" if use_local else ""
-            print(f"\n[bold green]Explanation{model_info}:[/bold green]")
+            print(f"\n[bold green]Command Explanation{model_info}:[/bold green]")
             print(explanation)
             
             # Display thinking sections for non-streaming mode if available
@@ -222,27 +214,20 @@ def explain(
 
 @app.command()
 def models():
-    """List available local models from Ollama."""
-    if not OLLAMA_AVAILABLE:
-        print_error("Ollama is not available. Make sure it's installed and running.")
+    """List available AI models for terminal commands."""
+    local_models = get_available_local_models()
+    
+    if not local_models:
+        print_warning("No local AI models available.")
+        print("You can install Ollama and pull a compatible model like:")
+        print("  1. Install Ollama from https://ollama.ai")
+        print("  2. Run: ollama pull deepseek-r1:7b")
         return
     
-    models = get_available_local_models()
-    if not models:
-        print_warning("No local models found. You may need to pull models first.")
-        print("\nTo pull the Deepseek model, run: [bold]ollama pull deepseek-r1:7b[/bold]")
-        return
-    
-    print("[bold green]Available local models:[/bold green]")
-    for model in models:
+    print("[bold green]Available AI Models:[/bold green]")
+    for model in local_models:
         print(f"- {model}")
     
-    print("\n[bold blue]To use a local model:[/bold blue]")
-    print("terminal suggest --local \"list all files\" ")
-    print("terminal explain --local --model deepseek-r1:7b \"ls -la\"")
-    print("\n[bold blue]To disable streaming:[/bold blue]")
-    print("terminal suggest --local --no-stream \"list all files\"")
-    print("terminal explain --local --no-stream \"ls -la\"")
-    print("\n[bold blue]To hide thinking sections:[/bold blue]")
-    print("terminal suggest --local --no-thinking \"list all files\"")
-    print("terminal explain --local --no-thinking \"ls -la\"") 
+    print("\nTo use a specific model:")
+    print("aidev terminal suggest --model MODEL_NAME \"find large files\"")
+    print("aidev terminal explain --model MODEL_NAME ls -la") 

@@ -1,15 +1,112 @@
-# Using Local Models with Ollama
+# Ollama Integration
 
-This CLI tool supports using local LLM models via [Ollama](https://ollama.ai/), providing a way to run AI commands without requiring internet access or sending data to external APIs.
+The CLI tool now supports using local Ollama models for all commands, providing a privacy-focused, offline alternative to API-based AI.
 
-## Prerequisites
+## Setup
 
-1. Install Ollama by following the instructions at https://github.com/ollama/ollama
-2. Pull the deepseek-r1:7b model (or any other model you want to use):
-   ```
-   ollama pull deepseek-r1:7b
-   ```
-3. Make sure Ollama is running (it should be running as a service in the background)
+1. Install Ollama from [ollama.ai](https://ollama.ai)
+2. Pull a model: `ollama pull deepseek-r1:7b` (recommended)
+3. Ensure Ollama is running before using the CLI with local models
+
+## Using Ollama with CLI Commands
+
+All major commands now support local Ollama models. Use the `--local` flag to activate:
+
+```bash
+# General format
+aidev [command] [subcommand] --local [options] "your prompt"
+```
+
+### Supported Commands
+
+The following commands all support Ollama integration:
+
+#### Terminal Commands
+```bash
+# Generate terminal command suggestions
+aidev terminal suggest --local "find large files on my system"
+
+# Explain a terminal command
+aidev terminal explain --local "find / -type f -size +100M"
+```
+
+#### Code Commands
+```bash
+# Generate code
+aidev code generate --local --language python "function to calculate fibonacci sequence"
+
+# Explain code
+aidev code explain --local path/to/file.py --line-range 10-20
+```
+
+#### Git Commands
+```bash
+# Generate commit message
+aidev git generate-commit --local
+
+# Generate PR description
+aidev git pr-description --local
+```
+
+#### Documentation Commands
+```bash
+# Search documentation
+aidev docs search --local "async functions in javascript"
+
+# Summarize documentation
+aidev docs summarize --local path/to/documentation.md --length medium
+```
+
+## Advanced Options
+
+Each command supports these additional options when using Ollama:
+
+### Model Selection
+
+Specify which local model to use:
+
+```bash
+aidev terminal suggest --local --model "deepseek-r1:7b" "find files modified in last 24 hours"
+```
+
+Available models depend on what you've downloaded with Ollama.
+
+### Real-time Streaming
+
+By default, all commands show results in real-time as they're generated:
+
+```bash
+# Disable streaming if preferred
+aidev terminal suggest --local --no-stream "find large files"
+```
+
+### Model Thinking Process
+
+Commands can show or hide the model's reasoning process:
+
+```bash
+# Show model thinking (default)
+aidev terminal suggest --local --show-thinking "how to find large files on my system"
+
+# Hide model thinking
+aidev terminal suggest --local --no-thinking "how to find large files on my system"
+```
+
+When `--show-thinking` is enabled, the model's thought process will be displayed in expandable panels.
+
+## Fallback Behavior
+
+If Ollama is not available or a requested model isn't found, commands will automatically fall back to:
+1. Another available local model (if any)
+2. The standard API backend
+
+Error messages will inform you when fallbacks occur.
+
+## Performance Considerations
+
+- Local models run on your hardware, so performance depends on your system specifications
+- First-time queries may take longer as models load into memory
+- Using smaller models improves response speed at the cost of some capability
 
 ## Checking Ollama Status
 
@@ -26,57 +123,6 @@ aidev terminal models
 ```
 
 Both commands will show available models and the current default model.
-
-## Using Ollama with CLI Commands
-
-Most text generation commands support using local models via the `--local` flag:
-
-```
-aidev terminal suggest --local "how to find large files on my system"
-```
-
-You can also specify which model to use:
-
-```
-aidev terminal explain --local --model deepseek-r1:7b "grep -r 'pattern' ."
-```
-
-### Real-time Streaming
-
-By default, the CLI shows text generation results in real-time as they come from Ollama, just like ChatGPT's streaming interface. If you prefer to wait for the full response before seeing it (like in the original implementation), you can use the `--no-stream` flag:
-
-```
-aidev terminal suggest --local --no-stream "how to find large files on my system"
-```
-
-This is useful when you want to pipe the output to another command or when you're running scripts.
-
-### Model Thinking Process
-
-If your model output includes sections enclosed in `<think>...</think>` tags, the CLI will treat these as the model's internal reasoning process and display them as collapsible sections. This gives you insight into how the model arrived at its answers.
-
-You can control this behavior with the `--show-thinking/--no-thinking` flags:
-
-```
-# Hide model reasoning process
-aidev terminal suggest --local --no-thinking "how to find large files on my system"
-
-# Show model reasoning (default)
-aidev terminal suggest --local --show-thinking "how to find large files on my system"
-```
-
-When `--show-thinking` is enabled:
-1. The model's thoughts are displayed in expandable/collapsible panels
-2. During streaming, a thinking indicator shows when the model is reasoning
-3. The raw thinking process is not included in the actual command suggestions or explanations
-
-### Supported Commands
-
-The following commands support using local Ollama models:
-
-- `terminal suggest`: Generate terminal command suggestions
-- `terminal explain`: Explain terminal commands
-- `api request`: Make API requests with local model option
 
 ## Configuration
 
@@ -138,10 +184,4 @@ If you're having issues with Ollama integration:
 6. Test a simple generation:
    ```
    ollama run deepseek-r1:7b "Hello, how are you?"
-   ```
-
-## Performance Considerations
-
-- Local models may be slower than cloud-based APIs depending on your hardware
-- For better performance, use smaller models if available
-- First generation after starting Ollama may take longer as the model is loaded into memory 
+   ``` 

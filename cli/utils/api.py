@@ -1,15 +1,13 @@
-"""API client for interacting with the backend."""
+"""API client for interacting with the AI models."""
 import requests
 import json
 from typing import Dict, Any, Optional, List
 from rich import print
 from .config import get_config_value
 from .formatting import loading_spinner
-try:
-    from .ollama import generate_text_with_ollama, check_ollama_availability
-    OLLAMA_AVAILABLE = check_ollama_availability()
-except (ImportError, Exception):
-    OLLAMA_AVAILABLE = False
+
+# Import the model factory
+from ..ai_agent_models.model_factory import get_model, get_available_models
 
 def api_request(
     endpoint: str, 
@@ -17,11 +15,11 @@ def api_request(
     data: Optional[Dict[str, Any]] = None,
     params: Optional[Dict[str, Any]] = None,
     loading_message: Optional[str] = None,
-    use_local_model: bool = False,
+    use_local_model: bool = True,  # Default to using local models
     local_model_name: Optional[str] = None
 ) -> Dict[str, Any]:
     """
-    Make a request to the API backend or use local Ollama models if specified.
+    Make a request to the AI model or API backend.
     
     Args:
         endpoint: API endpoint to call
@@ -29,31 +27,68 @@ def api_request(
         data: Request data
         params: Query parameters
         loading_message: Custom loading message
-        use_local_model: Whether to use a local Ollama model instead of the API
+        use_local_model: Whether to use a local model instead of the API
         local_model_name: Name of the local model to use (e.g., "deepseek-r1:7b")
     """
     # Check if we should use local model
-    if use_local_model and OLLAMA_AVAILABLE and endpoint == "/text/generate" and method == "POST":
-        # Use specified model or default to deepseek-r1:7b
-        model_name = local_model_name or "deepseek-r1:7b"
+    if use_local_model and endpoint in ["/text/generate", "/code/generate", "/code/explain"]:
+        # Get model
+        model = get_model(local_model_name)
         
-        # Extract parameters from data
-        prompt = data.get("prompt", "")
-        temperature = data.get("temperature", 0.7)
-        max_length = data.get("max_length")
-        system_prompt = data.get("system_prompt")
-        stream = data.get("stream", True)  # Default to streaming
-        show_thinking = data.get("show_thinking", True)  # Default to showing thinking
-        
-        # Generate text using local Ollama model
-        return generate_text_with_ollama(
-            prompt=prompt,
-            model=model_name,
-            temperature=temperature,
-            max_length=max_length,
-            system_prompt=system_prompt,
-            stream=stream
-        )
+        if model:
+            if endpoint == "/text/generate" and method == "POST":
+                # Extract parameters from data
+                prompt = data.get("prompt", "")
+                temperature = data.get("temperature", 0.7)
+                max_length = data.get("max_length")
+                system_prompt = data.get("system_prompt")
+                stream = data.get("stream", True)
+                
+                # Generate text using local model
+                return model.generate_text(
+                    prompt=prompt,
+                    temperature=temperature,
+                    max_length=max_length,
+                    system_prompt=system_prompt,
+                    stream=stream
+                )
+                
+            elif endpoint == "/code/generate" and method == "POST":
+                # Extract parameters from data
+                description = data.get("description", "")
+                language = data.get("language", "python")
+                temperature = data.get("temperature", 0.7)
+                max_length = data.get("max_length")
+                
+                # Generate code using local model
+                return model.generate_code(
+                    description=description,
+                    language=language,
+                    temperature=temperature,
+                    max_length=max_length
+                )
+                
+            elif endpoint == "/code/explain" and method == "POST":
+                # Extract parameters from data
+                code = data.get("code", "")
+                language = data.get("language")
+                
+                # Create a prompt for code explanation
+                prompt = f"""# Task: Explain the following {language or 'code'}
+
+```
+{code}
+```
+
+# Explanation:
+"""
+                
+                # Generate explanation using text generation
+                return model.generate_text(
+                    prompt=prompt,
+                    temperature=0.3,  # Lower temperature for more focused explanation
+                    stream=data.get("stream", True)
+                )
     
     # Otherwise, proceed with regular API request
     base_url = get_config_value("backend.url", "http://localhost:8000")
@@ -110,12 +145,10 @@ def api_request(
 
 def get_available_local_models() -> List[str]:
     """
-    Get a list of available local models from Ollama.
+    Get a list of available local models.
     
     Returns:
-        List of model names or empty list if Ollama is not available
+        List of model names or empty list if no models are available
     """
-    if OLLAMA_AVAILABLE:
-        from .ollama import get_available_models
-        return get_available_models()
-    return [] 
+    models = get_available_models()
+    return [name for name, info in models.items() if info.get("available", False)] 

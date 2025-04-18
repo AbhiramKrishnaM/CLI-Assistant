@@ -1,7 +1,7 @@
 """Tests for model integration."""
 import pytest
 import logging
-from backend.services.model_manager import model_manager
+from cli.ai_agent_models.model_factory import get_model, get_available_models
 
 # Configure logging
 logging.basicConfig(
@@ -10,59 +10,68 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Tests that use the real model manager (slower but more thorough)
+# Tests that use the real model (slower but more thorough)
 @pytest.mark.slow
-def test_model_manager_initialization():
-    """Test that the model manager initializes properly."""
-    assert model_manager is not None
+def test_model_factory_initialization():
+    """Test that the model factory initializes properly."""
+    models = get_available_models()
+    assert len(models) >= 1  # Should have at least one model
     
-    models = model_manager.get_available_models()
-    assert len(models) >= 3  # Should have at least code_generation, text_generation, and embedding models
+    # The default model should be available
+    default_model = get_model()
+    # Skip the test if no models are available (e.g., Ollama is not installed)
+    if default_model is None:
+        pytest.skip("No AI models available to test")
     
-    model_types = [model["type"] for model in models]
-    assert "code_generation" in model_types
-    assert "text_generation" in model_types
-    assert "embedding" in model_types
+    assert default_model is not None
+    assert default_model.model_name in models
 
 @pytest.mark.slow
 def test_code_generation():
-    """Test code generation model."""
-    prompt = """
-    You are an expert Python developer.
-    Generate Python code based on this description:
+    """Test code generation."""
+    model = get_model()
+    # Skip the test if no models are available
+    if model is None:
+        pytest.skip("No AI models available to test")
     
-    Create a function that calculates the Fibonacci sequence up to n terms.
+    description = "Create a function that calculates the Fibonacci sequence up to n terms"
+    language = "python"
     
-    Provide only the code without any additional explanation.
-    """
-    
-    code = model_manager.generate_text(
-        model_type="code_generation",
-        prompt=prompt,
+    result = model.generate_code(
+        description=description,
+        language=language,
         temperature=0.7,
         max_length=1024,
+        stream=False
     )
     
-    assert code is not None
+    assert result is not None
+    assert "code" in result
+    code = result["code"]
     assert len(code) > 0
     # Basic check that it looks like Python code
-    assert "def" in code or "function" in code
+    assert "def" in code
 
 @pytest.mark.slow
 def test_text_generation():
-    """Test text generation model."""
-    prompt = """
-    Explain the concept of recursion in programming in simple terms.
-    """
+    """Test text generation."""
+    model = get_model()
+    # Skip the test if no models are available
+    if model is None:
+        pytest.skip("No AI models available to test")
     
-    explanation = model_manager.generate_text(
-        model_type="text_generation",
+    prompt = "Explain the concept of recursion in programming in simple terms."
+    
+    result = model.generate_text(
         prompt=prompt,
         temperature=0.7,
         max_length=1024,
+        stream=False
     )
     
-    assert explanation is not None
+    assert result is not None
+    assert "text" in result
+    explanation = result["text"]
     assert len(explanation) > 0
     # Check that the explanation mentions recursion
     assert "recurs" in explanation.lower()
@@ -70,60 +79,76 @@ def test_text_generation():
 @pytest.mark.slow
 def test_embeddings():
     """Test embedding model."""
+    model = get_model()
+    # Skip the test if no models are available
+    if model is None:
+        pytest.skip("No AI models available to test")
+    
     texts = [
         "Python is a programming language",
         "JavaScript runs in the browser",
         "Machine learning is a subset of AI"
     ]
     
-    embeddings = model_manager.generate_embeddings(texts)
+    embeddings = model.generate_embeddings(texts)
     
     assert embeddings is not None
     assert len(embeddings) == len(texts)
     assert len(embeddings[0]) > 0  # Should have at least some dimensions
 
-@pytest.mark.slow
-def test_model_unloading():
-    """Test that models can be unloaded."""
-    # First ensure the model is loaded
-    model_manager.get_model("code_generation")
+# Mock model for testing
+class MockAIModel:
+    @property
+    def model_name(self):
+        return "mock-model"
     
-    # Then unload it
-    result = model_manager.unload_model("code_generation")
-    assert result is True
+    def generate_text(self, prompt, **kwargs):
+        return {
+            "text": "This is mock generated text",
+            "model_used": "mock-model",
+            "completion_tokens": 10
+        }
     
-    # Check available models
-    models = model_manager.get_available_models()
-    code_model = next((m for m in models if m["type"] == "code_generation"), None)
-    assert code_model is not None
-    assert code_model["loaded"] is False
+    def generate_code(self, description, language, **kwargs):
+        return {
+            "code": "def mock_function():\n    return 'This is mock code'",
+            "language": language,
+            "model_used": "mock-model",
+            "completion_tokens": 15
+        }
+    
+    def generate_embeddings(self, texts):
+        return [[0.1, 0.2, 0.3, 0.4, 0.5]] * len(texts)
+    
+    @classmethod
+    def is_available(cls):
+        return True
 
-# Tests that use the mock model manager (faster for CI/CD)
-def test_mock_model_manager(mock_model_manager):
-    """Test that the mock model manager works as expected."""
-    assert mock_model_manager is not None
-    
-    # Test get_available_models
-    models = mock_model_manager.get_available_models()
-    assert len(models) == 3
-    
-    # Test get_model
-    model = mock_model_manager.get_model("code_generation")
-    assert model is not None
+@pytest.fixture
+def mock_ai_model():
+    """Fixture for a mock AI model."""
+    return MockAIModel()
+
+# Tests that use the mock model (faster for CI/CD)
+def test_mock_model(mock_ai_model):
+    """Test that the mock model works as expected."""
+    assert mock_ai_model is not None
     
     # Test generate_text
-    text = mock_model_manager.generate_text(
-        model_type="code_generation",
-        prompt="Generate a factorial function",
+    result = mock_ai_model.generate_text(
+        prompt="Generate a factorial function"
     )
-    assert text == "This is mock generated text"
+    assert result["text"] == "This is mock generated text"
+    
+    # Test generate_code
+    result = mock_ai_model.generate_code(
+        description="Generate a factorial function",
+        language="python"
+    )
+    assert "def mock_function" in result["code"]
     
     # Test generate_embeddings
     texts = ["Example text 1", "Example text 2", "Example text 3"]
-    embeddings = mock_model_manager.generate_embeddings(texts)
+    embeddings = mock_ai_model.generate_embeddings(texts)
     assert len(embeddings) == 3
-    assert len(embeddings[0]) == 5  # Mock returns 5-dimensional vectors
-    
-    # Test unload_model
-    result = mock_model_manager.unload_model("code_generation")
-    assert result is True 
+    assert len(embeddings[0]) == 5  # Mock returns 5-dimensional vectors 
