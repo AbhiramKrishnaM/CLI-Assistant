@@ -19,11 +19,6 @@ async def generate_code(request: CodeGenerationRequest):
     logger.info(f"Code generation request for {request.language}")
     
     try:
-        # Get the code generation model
-        model = model_manager.get_model("code_generation")
-        if not model:
-            raise HTTPException(status_code=503, detail="Code generation model not available")
-        
         # Create a prompt for the model
         prompt = f"""
         You are an expert {request.language} developer.
@@ -34,18 +29,23 @@ async def generate_code(request: CodeGenerationRequest):
         Provide only the code without any additional explanation.
         """
         
-        # Generate the code
-        code = model.generate(
+        # Generate the code using the appropriate model
+        code = model_manager.generate_text(
+            model_type="code_generation",
             prompt=prompt,
             temperature=request.temperature,
-            max_length=request.max_length or 1024,
+            max_length=request.max_length or 2048,
         )
+        
+        # Get the model ID
+        model_info = next((m for m in model_manager.get_available_models() 
+                         if m["type"] == "code_generation"), {"model_id": "unknown"})
         
         # Return the response
         return CodeGenerationResponse(
             code=code,
             language=request.language,
-            model_used=model.model_id,
+            model_used=model_info["model_id"],
         )
     
     except Exception as e:
@@ -59,11 +59,6 @@ async def explain_code(request: CodeExplanationRequest):
     logger.info(f"Code explanation request of length {len(request.code)}")
     
     try:
-        # Get the text generation model
-        model = model_manager.get_model("text_generation")
-        if not model:
-            raise HTTPException(status_code=503, detail="Text generation model not available")
-        
         # Detect language if not provided
         language = request.language or "Unspecified (auto-detect)"
         
@@ -85,18 +80,23 @@ async def explain_code(request: CodeExplanationRequest):
         {detail_level_prompt}
         """
         
-        # Generate the explanation
-        explanation = model.generate(
+        # Generate the explanation using the text generation model
+        explanation = model_manager.generate_text(
+            model_type="text_generation",
             prompt=prompt,
             temperature=0.3,  # Lower temperature for more focused response
             max_length=1024,
         )
         
+        # Get the model ID
+        model_info = next((m for m in model_manager.get_available_models() 
+                         if m["type"] == "text_generation"), {"model_id": "unknown"})
+        
         # Return the response
         return CodeExplanationResponse(
             explanation=explanation,
             language_detected=language,
-            model_used=model.model_id,
+            model_used=model_info["model_id"],
         )
     
     except Exception as e:

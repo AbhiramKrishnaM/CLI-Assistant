@@ -132,15 +132,44 @@ ai-cli-assistant/
 │   ├── utils/           # Utilities
 │   └── main.py          # Entry point
 ├── backend/             # FastAPI backend service
-├── shared/              # Shared code
-└── tests/               # Tests
+│   ├── api/             # API endpoints
+│   ├── models/          # Data models
+│   ├── services/        # Business logic and services
+│   └── main.py          # FastAPI application
+├── shared/              # Shared code between CLI and backend
+├── tests/               # Test suite
+│   ├── conftest.py      # Pytest fixtures
+│   ├── test_api.py      # Backend API tests
+│   ├── test_cli.py      # CLI interface tests
+│   └── test_models.py   # Model integration tests
+└── requirements.txt     # Project dependencies
 ```
 
 ### Running Tests
 
+You can run tests using the provided script or directly with pytest:
+
 ```bash
-pytest
+# Run fast tests (skipping those that use real AI models)
+python tests/run_tests.py
+
+# Run all tests including slow ones
+python tests/run_tests.py --slow
+
+# Run with verbose output
+python tests/run_tests.py -v
+
+# Run a specific test file
+python tests/run_tests.py --path tests/test_cli.py
+
+# Using pytest directly
+pytest -k "not slow"  # Skip slow tests
+pytest                # Run all tests
+pytest -v             # Verbose output
+pytest tests/test_api.py::test_health_endpoint  # Run specific test
 ```
+
+For more information about testing, see the [tests/README.md](tests/README.md) file.
 
 ### Linting and Formatting
 
