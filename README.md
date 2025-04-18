@@ -1,6 +1,6 @@
 # AI-Powered CLI Assistant
 
-An AI-powered command-line assistant for developers that provides code generation, terminal command suggestions, documentation search, git assistance, and API testing capabilities - all running locally using Hugging Face's open-source models or Ollama's local LLM models.
+An AI-powered command-line assistant for developers that provides code generation, terminal command suggestions, documentation search, git assistance, and API testing capabilities - all running locally using Ollama's LLM models.
 
 ## Features
 
@@ -12,13 +12,14 @@ An AI-powered command-line assistant for developers that provides code generatio
 
 ## Architecture
 
-This CLI tool can operate in two modes:
+This CLI tool uses a standalone architecture that connects directly to Ollama models. It's designed to be:
 
-1. **Standalone Mode** (recommended): Uses local AI models directly without requiring a backend server. This is the default mode and uses models like DeepSeek and other Ollama-compatible models.
+1. **Fast**: Connects directly to Ollama with no intermediate server
+2. **Flexible**: Supports different Ollama models through a modular framework
+3. **User-friendly**: Simple command-line interface with streaming output
+4. **Extensible**: Easy to add new model implementations
 
-2. **Client-Server Mode**: Connects to a backend FastAPI service that hosts Hugging Face models. This mode is optional and can be used if you prefer to use Hugging Face models or need advanced features.
-
-The standalone mode is simpler and faster to set up, while the client-server mode provides more flexibility.
+The tool uses a pluggable model architecture that makes it easy to add support for additional AI models in the future.
 
 ## Installation
 
@@ -26,7 +27,7 @@ The standalone mode is simpler and faster to set up, while the client-server mod
 
 - Python 3.8+
 - Git
-- Ollama (optional but recommended for standalone mode)
+- Ollama (required) - Install from [ollama.ai](https://ollama.ai)
 
 ### Setup
 
@@ -52,11 +53,14 @@ The standalone mode is simpler and faster to set up, while the client-server mod
    pip install -e .
    ```
 
-5. (Optional) For standalone mode with Ollama:
+5. Install at least one model with Ollama:
    ```bash
-   # Install Ollama from https://ollama.ai
-   # Then pull the DeepSeek model
+   # Install the recommended DeepSeek model
    ollama pull deepseek-r1:7b
+   
+   # Or try other models
+   ollama pull llama2:7b
+   ollama pull mistral:7b
    ```
 
 ## Usage
@@ -139,32 +143,29 @@ aidev api list-saved
 aidev api load my-request --execute
 ```
 
-### Using Local Models with Ollama
+### Using Ollama Models
 
-All commands now use local LLM models by default via Ollama. To use the backend API instead, use the `--api` flag:
+All commands use Ollama models:
 
 ```bash
-# Generate code using local model (default)
+# Generate code
 aidev code generate "Create a Python function to calculate factorial"
 
-# Generate code using the backend API
-aidev code generate --api "Create a Python function to calculate factorial"
-
-# Get terminal command suggestions locally (default)
+# Get terminal command suggestions
 aidev terminal suggest "find files modified in the last week"
 
-# Search documentation with a local model (default)
+# Search documentation
 aidev docs search "async functions in javascript"
 
-# Generate commit message using local model (default)
+# Generate commit message
 aidev git generate-commit
 ```
 
-Additional options:
+Model selection and options:
 
 ```bash
 # Select a specific Ollama model
-aidev terminal suggest --model "deepseek-r1:7b" "find large files"
+aidev terminal suggest --model "llama2:7b" "find large files"
 
 # Disable streaming output
 aidev code generate --no-stream "Create a binary search function"
@@ -198,17 +199,13 @@ ai-cli-assistant/
 │   │   ├── base_model.py  # Base abstract class for models
 │   │   └── ollama_*.py    # Model implementations
 │   └── main.py            # Entry point
-├── backend/               # Optional FastAPI backend service
-│   ├── api/               # API endpoints
-│   ├── models/            # Data models
-│   ├── services/          # Business logic and services
-│   └── main.py            # FastAPI application
-├── shared/                # Shared code between CLI and backend
+├── shared/                # Shared model definitions
 ├── tests/                 # Test suite
 │   ├── conftest.py        # Pytest fixtures
-│   ├── test_api.py        # Backend API tests
 │   ├── test_cli.py        # CLI interface tests
 │   └── test_models.py     # Model integration tests
+├── docs/                  # Documentation
+│   └── ollama.md          # Ollama setup guide
 └── requirements.txt       # Project dependencies
 ```
 
@@ -233,7 +230,7 @@ python tests/run_tests.py --path tests/test_cli.py
 pytest -k "not slow"  # Skip slow tests
 pytest                # Run all tests
 pytest -v             # Verbose output
-pytest tests/test_api.py::test_health_endpoint  # Run specific test
+pytest tests/test_cli.py::test_specific_command  # Run specific test
 ```
 
 For more information about testing, see the [tests/README.md](tests/README.md) file.
