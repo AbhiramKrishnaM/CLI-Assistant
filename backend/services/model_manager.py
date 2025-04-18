@@ -2,11 +2,11 @@
 import os
 import logging
 import gc
+import re
 from typing import Dict, List, Optional, Any
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline, BitsAndBytesConfig, AutoModel
 from sentence_transformers import SentenceTransformer
-import re
 
 logger = logging.getLogger(__name__)
 
@@ -17,26 +17,57 @@ class ModelManager:
         """Initialize the model manager."""
         self.models = {}
         self.tokenizers = {}
-        self.model_configs = {
-            "code_generation": {
-                "model_id": "gpt2",  # Fallback to a simpler model that works
-                "device": "cuda" if torch.cuda.is_available() else "cpu",
-                "quantization": "none",
-                "max_length": 1024,
-                "temperature": 0.7,
-            },
-            "text_generation": {
-                "model_id": "distilgpt2",  # Better than base gpt2
-                "device": "cuda" if torch.cuda.is_available() else "cpu",
-                "quantization": "none",
-                "max_length": 512,
-                "temperature": 0.7,
-            },
-            "embedding": {
-                "model_id": "sentence-transformers/all-MiniLM-L6-v2",
-                "device": "cuda" if torch.cuda.is_available() else "cpu",
+        
+        # Check if GPU is available
+        has_gpu = torch.cuda.is_available()
+        
+        # Configure models based on hardware
+        if has_gpu:
+            # GPU configurations - can use larger models
+            self.model_configs = {
+                "code_generation": {
+                    "model_id": "Salesforce/codegen-350M-mono",  # Small specialized code model
+                    "device": "cuda",
+                    "quantization": "4bit",
+                    "max_length": 1024,
+                    "temperature": 0.7,
+                },
+                "text_generation": {
+                    "model_id": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",  # Small chat model
+                    "device": "cuda",
+                    "quantization": "4bit",
+                    "max_length": 512,
+                    "temperature": 0.7,
+                },
+                "embedding": {
+                    "model_id": "sentence-transformers/all-MiniLM-L6-v2",
+                    "device": "cuda",
+                    "quantization": "none",
+                }
             }
-        }
+        else:
+            # CPU configurations - use smaller models
+            self.model_configs = {
+                "code_generation": {
+                    "model_id": "Salesforce/codegen-350M-mono",  # Keep the same model
+                    "device": "cpu",
+                    "quantization": "none",
+                    "max_length": 1024,
+                    "temperature": 0.7,
+                },
+                "text_generation": {
+                    "model_id": "TinyLlama/TinyLlama-1.1B-Chat-v1.0",  # Keep using TinyLlama
+                    "device": "cpu", 
+                    "quantization": "none",
+                    "max_length": 512,
+                    "temperature": 0.7,
+                },
+                "embedding": {
+                    "model_id": "sentence-transformers/all-MiniLM-L6-v2",
+                    "device": "cpu",
+                    "quantization": "none",
+                }
+            }
         
         # Directory to store downloaded models
         self.models_dir = os.path.expanduser("~/.aidev/models")
@@ -46,7 +77,7 @@ class ModelManager:
         os.environ["TRANSFORMERS_CACHE"] = self.models_dir
         
         logger.info("Model manager initialized")
-        logger.info(f"Using device: {'CUDA' if torch.cuda.is_available() else 'CPU'}")
+        logger.info(f"Using device: {'CUDA' if has_gpu else 'CPU'}")
     
     def get_model(self, model_type: str):
         """
@@ -68,6 +99,24 @@ class ModelManager:
         
         logger.info(f"Loading {model_type} model: {self.model_configs[model_type]['model_id']}...")
         
+        # Setting a timeout for model loading to avoid hanging
+        import signal
+        
+        class TimeoutException(Exception):
+            pass
+        
+        def timeout_handler(signum, frame):
+            raise TimeoutException("Model loading timed out")
+        
+        # Set timeout for 60 seconds
+        try:
+            # Only on Unix systems
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(60)
+        except (AttributeError, ValueError):
+            # On Windows, we can't use SIGALRM
+            logger.warning("Signal timeout not supported on this platform")
+        
         try:
             # Free up memory if possible
             gc.collect()
@@ -77,6 +126,7 @@ class ModelManager:
             config = self.model_configs[model_type]
             model_id = config["model_id"]
             device = config["device"]
+            quantization = config.get("quantization", "none")
             
             if model_type == "embedding":
                 # Load sentence transformer model
@@ -93,27 +143,74 @@ class ModelManager:
                     tokenizer.pad_token = tokenizer.eos_token
                 self.tokenizers[model_type] = tokenizer
                 
-                # Load model directly without pipeline
-                model = AutoModelForCausalLM.from_pretrained(
-                    model_id,
-                    cache_dir=self.models_dir,
-                    device_map="auto" if device == "cuda" else None,
-                    torch_dtype=torch.float16 if device == "cuda" else torch.float32,
-                )
+                # Load model with quantization if available
+                if quantization == "4bit" and torch.cuda.is_available():
+                    try:
+                        import bitsandbytes as bnb
+                        logger.info(f"Using 4-bit quantization for {model_type} model")
+                        
+                        # Create BitsAndBytes config
+                        quantization_config = BitsAndBytesConfig(
+                            load_in_4bit=True,
+                            bnb_4bit_compute_dtype=torch.float16,
+                            bnb_4bit_use_double_quant=True,
+                            bnb_4bit_quant_type="nf4"
+                        )
+                        
+                        # Load model with quantization
+                        model = AutoModelForCausalLM.from_pretrained(
+                            model_id,
+                            cache_dir=self.models_dir,
+                            device_map="auto",
+                            quantization_config=quantization_config,
+                            torch_dtype=torch.float16
+                        )
+                    except ImportError:
+                        logger.warning("bitsandbytes not available, loading without 4-bit quantization")
+                        model = AutoModelForCausalLM.from_pretrained(
+                            model_id,
+                            cache_dir=self.models_dir,
+                            device_map="auto" if device == "cuda" else None,
+                            torch_dtype=torch.float16 if device == "cuda" else torch.float32,
+                        )
+                else:
+                    # Load without quantization
+                    model = AutoModelForCausalLM.from_pretrained(
+                        model_id,
+                        cache_dir=self.models_dir,
+                        device_map="auto" if device == "cuda" else None,
+                        torch_dtype=torch.float16 if device == "cuda" else torch.float32,
+                    )
                 
                 self.models[model_type] = model
                 logger.info(f"Model {model_type} loaded successfully")
             
+            # Reset the alarm
+            try:
+                signal.alarm(0)
+            except (AttributeError, ValueError):
+                pass
+                
             return self.models[model_type]
             
+        except TimeoutException:
+            logger.error(f"Timeout while loading model {model_type}")
+            # Reset the alarm
+            try:
+                signal.alarm(0)
+            except (AttributeError, ValueError):
+                pass
+            # Just return None for now - no fallback
+            return None
         except Exception as e:
+            # Reset the alarm
+            try:
+                signal.alarm(0)
+            except (AttributeError, ValueError):
+                pass
+                
             logger.error(f"Error loading model {model_type}: {str(e)}", exc_info=True)
-            
-            # Provide a MockModel as fallback for development
-            logger.warning(f"Using MockModel as fallback for {model_type}")
-            model = MockModel(self.model_configs[model_type])
-            self.models[model_type] = model
-            return model
+            return None
     
     def generate_text(self, model_type: str, prompt: str, **kwargs) -> str:
         """Generate text using the specified model."""
@@ -145,28 +242,13 @@ class ModelManager:
                     enhanced_prompt = prompt + "\n\n```java\n// Complete implementation\n"
                 else:
                     enhanced_prompt = prompt + "\n\n```\n# Complete implementation\n"
+            elif model_type == "text_generation" and "TinyLlama" in config["model_id"]:
+                # Format for TinyLlama chat model
+                enhanced_prompt = f"<human>: {prompt}\n<assistant>:"
             
             # Generate text
             logger.info(f"Generating text with {model_type} model")
             
-            # Check if we're using a mock model (fallback)
-            if isinstance(model, MockModel):
-                result = model.generate(enhanced_prompt, **kwargs)
-                # For code generation in fallback mode, cleanup the output
-                if model_type == "code_generation":
-                    if result.startswith("```"):
-                        # Extract code from markdown code block if present
-                        parts = result.split("```")
-                        if len(parts) >= 3:
-                            result = parts[1]
-                            # Remove language identifier if present
-                            first_line_end = result.find('\n')
-                            if first_line_end > 0:
-                                language_part = result[:first_line_end].strip()
-                                if language_part in ["python", "javascript", "java", "js"]:
-                                    result = result[first_line_end:].strip()
-                return result
-                
             # Handle direct model inference (no pipeline)
             tokenizer = self.tokenizers[model_type]
             inputs = tokenizer(enhanced_prompt, return_tensors="pt")
@@ -175,6 +257,7 @@ class ModelManager:
                 
             # Generate with the model
             with torch.no_grad():
+                # Add specific generation parameters for better results
                 outputs = model.generate(
                     **inputs,
                     max_length=max_length,
@@ -184,6 +267,8 @@ class ModelManager:
                     pad_token_id=tokenizer.eos_token_id,
                     repetition_penalty=1.2,  # Add repetition penalty
                     no_repeat_ngram_size=2,  # Prevent repeating 2-grams
+                    top_p=0.95,  # Use nucleus sampling
+                    top_k=50,    # Limit vocabulary
                 )
                 
             # Decode the generated text
@@ -192,6 +277,12 @@ class ModelManager:
             # Remove the prompt from the generated text
             if generated_text.startswith(enhanced_prompt):
                 generated_text = generated_text[len(enhanced_prompt):].strip()
+            
+            # For TinyLlama, extract assistant's response
+            if model_type == "text_generation" and "TinyLlama" in config["model_id"]:
+                if "<human>:" in generated_text:
+                    # Extract just the assistant's part
+                    generated_text = generated_text.split("<assistant>:", 1)[-1].split("<human>:", 1)[0].strip()
             
             # Clean up the generated code text
             if model_type == "code_generation":
@@ -234,93 +325,6 @@ class ModelManager:
                 if len(generated_text.split('\n')) > 50:
                     generated_text = '\n'.join(generated_text.split('\n')[:50])
                     generated_text += "\n# ... truncated due to length"
-                
-                # Better checks for low-quality code
-                code_is_bad = False
-                
-                # Check for code length
-                if len(generated_text.strip()) < 15:
-                    code_is_bad = True
-                    logger.warning("Generated code too short")
-                
-                # Check for sequences of numbers (model hallucination)
-                number_sequence_pattern = r'\d \d \d \d \d \d'
-                if re.search(number_sequence_pattern, generated_text):
-                    code_is_bad = True
-                    logger.warning("Generated code contains number sequences (hallucination)")
-                
-                # Check for gibberish words or random strings
-                if "```" in generated_text or "===" in generated_text:
-                    code_is_bad = True
-                    logger.warning("Generated code contains markdown artifacts")
-                
-                # If the code looks bad, use a fallback
-                if code_is_bad:
-                    # Extract language from prompt
-                    language = "python"  # Default
-                    if "python" in prompt.lower():
-                        language = "python"
-                    elif "javascript" in prompt.lower() or "js" in prompt.lower():
-                        language = "javascript"
-                    elif "java" in prompt.lower():
-                        language = "java"
-                    
-                    # Get a clean description
-                    description = prompt.lower()
-                    if "code to" in description:
-                        description = description.split("code to")[-1].strip()
-                    
-                    # Generate a simple fallback
-                    logger.warning(f"Model generated low-quality code, using fallback example for {language}")
-                    
-                    # Simplified fallback examples
-                    if language == "python":
-                        generated_text = f"""
-# Python code for: {description}
-
-def main():
-    print("This is an example implementation for: {description}")
-    # The actual implementation would be more specific to your needs
-    result = 0
-    for i in range(10):
-        result += i
-    print(f"Result: {{result}}")
-
-if __name__ == "__main__":
-    main()
-"""
-                    elif language == "javascript":
-                        generated_text = f"""
-// JavaScript code for: {description}
-
-function main() {{
-    console.log("This is an example implementation for: {description}");
-    // The actual implementation would be more specific to your needs
-    let result = 0;
-    for (let i = 0; i < 10; i++) {{
-        result += i;
-    }}
-    console.log(`Result: ${{result}}`);
-}}
-
-main();
-"""
-                    else:
-                        generated_text = f"""
-// Code for: {description}
-
-class Main {{
-    public static void main(String[] args) {{
-        System.out.println("This is an example implementation for: {description}");
-        // The actual implementation would be more specific to your needs
-        int result = 0;
-        for (int i = 0; i < 10; i++) {{
-            result += i;
-        }}
-        System.out.println("Result: " + result);
-    }}
-}}
-"""
             
             return generated_text
             
@@ -376,102 +380,6 @@ class Main {{
                 
             return True
         return False
-
-
-class MockModel:
-    """Mock implementation of a model for development."""
-    
-    def __init__(self, config: Dict[str, Any]):
-        """Initialize the mock model."""
-        self.config = config
-        self.model_id = config["model_id"]
-    
-    def __call__(self, prompt: str, **kwargs) -> List[Dict[str, str]]:
-        """Generate text based on a prompt."""
-        # This is a mock implementation
-        return [{"generated_text": prompt + f"\n\nMock response from {self.model_id} for this prompt."}]
-    
-    def generate(self, prompt: str, **kwargs) -> str:
-        """Generate text based on a prompt."""
-        # Check if this is a code generation request
-        if "code" in self.model_id.lower() or "# Code:" in prompt:
-            language = "python"  # Default language
-            
-            # Try to extract the language from prompt
-            if "python" in prompt.lower():
-                language = "python"
-            elif "javascript" in prompt.lower() or "js" in prompt.lower():
-                language = "javascript"
-            elif "java" in prompt.lower():
-                language = "java"
-            
-            # Return a simple code example based on the detected language
-            if language == "python":
-                return """
-def main():
-    print("Hello, world!")
-    # This is a fallback example since the model couldn't be loaded
-    # The actual AI model would generate more specific code
-    
-    result = 0
-    for i in range(10):
-        result += i
-    
-    print(f"The sum is {result}")
-    
-if __name__ == "__main__":
-    main()
-"""
-            elif language == "javascript":
-                return """
-function main() {
-  console.log("Hello, world!");
-  // This is a fallback example since the model couldn't be loaded
-  // The actual AI model would generate more specific code
-  
-  let result = 0;
-  for (let i = 0; i < 10; i++) {
-    result += i;
-  }
-  
-  console.log(`The sum is ${result}`);
-}
-
-main();
-"""
-            else:
-                return """
-// Generic code example
-// This is a fallback example since the model couldn't be loaded
-// The actual AI model would generate more specific code
-
-public class Main {
-    public static void main(String[] args) {
-        System.out.println("Hello, world!");
-        
-        int result = 0;
-        for (int i = 0; i < 10; i++) {
-            result += i;
-        }
-        
-        System.out.println("The sum is " + result);
-    }
-}
-"""
-        else:
-            # For text generation, return a generic but informative fallback response
-            return """
-I'm sorry, but I'm currently operating in fallback mode because the AI model couldn't be loaded properly.
-
-In normal operation, I would provide a detailed response to your query. Please check if the required model dependencies are installed correctly or try again later.
-
-This is a placeholder response to indicate that the system is working, but the AI model is not available.
-"""
-    
-    def encode(self, texts: List[str]) -> List[List[float]]:
-        """Generate embeddings for texts."""
-        # This is a mock implementation
-        return [[0.1, 0.2, 0.3, 0.4, 0.5] for _ in texts]
 
 
 # Singleton instance
