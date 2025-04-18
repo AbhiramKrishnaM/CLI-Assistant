@@ -27,7 +27,8 @@ def generate(
             "language": language,
             "temperature": temperature,
             "max_length": max_length
-        }
+        },
+        loading_message=f"Generating {language} code..."
     )
     
     if "error" in response:
@@ -80,7 +81,8 @@ def explain(
                 "code": code,
                 "language": language,
                 "detail_level": detail_level
-            }
+            },
+            loading_message="Analyzing code and generating explanation..."
         )
         
         if "error" in response:

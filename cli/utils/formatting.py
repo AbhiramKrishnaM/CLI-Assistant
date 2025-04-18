@@ -1,9 +1,14 @@
 """Formatting utilities for the CLI output."""
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Callable
 from rich.console import Console
 from rich.syntax import Syntax
 from rich.table import Table
 from rich.panel import Panel
+from rich.spinner import Spinner
+from rich.live import Live
+from rich.text import Text
+import time
+from contextlib import contextmanager
 
 console = Console()
 
@@ -54,4 +59,53 @@ def print_json(data: Dict[str, Any], title: Optional[str] = None):
         console.print(f"[bold]{title}[/bold]")
     
     syntax = Syntax(json_str, "json", theme="monokai")
-    console.print(syntax) 
+    console.print(syntax)
+
+@contextmanager
+def loading_spinner(message: str = "Processing", spinner_style: str = "dots", color: str = "blue"):
+    """
+    Context manager that displays a loading spinner while executing code.
+    
+    Args:
+        message: The message to display alongside the spinner
+        spinner_style: The spinner style to use (dots, dots2, dots3, dots12, line, aesthetic, etc.)
+        color: The color of the spinner and message text
+        
+    Example:
+        with loading_spinner("Generating code...", spinner_style="aesthetic"):
+            result = some_long_running_function()
+    """
+    # Dictionary of spinner styles
+    spinner_styles = {
+        "dots": "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏",
+        "dots2": "⣾⣽⣻⢿⡿⣟⣯⣷",
+        "dots3": "⣷⣯⣟⡿⢿⣻⣽⣾",
+        "dots12": "⢀⡀⠄⠂⠁⠈⠐⠠⢀",
+        "line": "|/-\\",
+        "aesthetic": "▰▱▰▱▱▱▱▱▱▱ ▰▰▱▱▱▱▱▱▱▱ ▰▰▰▱▱▱▱▱▱▱ ▰▰▰▰▱▱▱▱▱▱ ▰▰▰▰▰▱▱▱▱▱ ▰▰▰▰▰▰▱▱▱▱ ▰▰▰▰▰▰▰▱▱▱ ▰▰▰▰▰▰▰▰▱▱ ▰▰▰▰▰▰▰▰▰▱ ▰▰▰▰▰▰▰▰▰▰",
+        "bounce": "⠁⠂⠄⡀⢀⠠⠐⠈",
+        "moon": "🌑🌒🌓🌔🌕🌖🌗🌘",
+        "clock": "🕐🕑🕒🕓🕔🕕🕖🕗🕘🕙🕚🕛",
+        "simple": "←↖↑↗→↘↓↙",
+        "thinking": "🤔  🧠  💭  💡  "
+    }
+    
+    # Select spinner style or default to dots if not found
+    spinner_text = spinner_styles.get(spinner_style, spinner_styles["dots"])
+    formatted_message = f"[bold {color}]{message}[/bold {color}]"
+    
+    if spinner_style == "aesthetic":
+        # Special handling for the aesthetic spinner which shows progress
+        with console.status(formatted_message, spinner="aesthetic") as status:
+            try:
+                yield
+            finally:
+                pass
+    else:
+        # Standard spinner
+        spinner = Spinner(spinner_text, formatted_message)
+        with console.status(spinner) as status:
+            try:
+                yield
+            finally:
+                pass 

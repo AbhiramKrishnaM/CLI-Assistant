@@ -4,12 +4,14 @@ import json
 from typing import Dict, Any, Optional
 from rich import print
 from .config import get_config_value
+from .formatting import loading_spinner
 
 def api_request(
     endpoint: str, 
     method: str = "GET", 
     data: Optional[Dict[str, Any]] = None,
-    params: Optional[Dict[str, Any]] = None
+    params: Optional[Dict[str, Any]] = None,
+    loading_message: Optional[str] = None
 ) -> Dict[str, Any]:
     """Make a request to the API backend."""
     base_url = get_config_value("backend.url", "http://localhost:8000")
@@ -17,14 +19,29 @@ def api_request(
     
     url = f"{base_url}/{endpoint.lstrip('/')}"
     
+    # Use a default loading message based on the endpoint if none provided
+    if loading_message is None:
+        if "code/generate" in endpoint:
+            loading_message = "Generating code..."
+        elif "code/explain" in endpoint:
+            loading_message = "Analyzing code..."
+        elif "text/generate" in endpoint:
+            loading_message = "Generating text..."
+        elif "docs" in endpoint:
+            loading_message = "Searching documentation..."
+        else:
+            loading_message = "Waiting for response..."
+    
     try:
-        response = requests.request(
-            method=method,
-            url=url,
-            json=data,
-            params=params,
-            timeout=timeout
-        )
+        # Use the loading spinner while waiting for the API response
+        with loading_spinner(loading_message):
+            response = requests.request(
+                method=method,
+                url=url,
+                json=data,
+                params=params,
+                timeout=timeout
+            )
         
         # Raise exception for error status codes
         response.raise_for_status()
