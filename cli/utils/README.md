@@ -29,17 +29,19 @@ with loading_spinner("Analyzing...", spinner_style="dots2", color="green"):
 
 ### Available Spinner Styles
 
-- `dots` (default): ⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏
-- `dots2`: ⣾⣽⣻⢿⡿⣟⣯⣷
-- `dots3`: ⣷⣯⣟⡿⢿⣻⣽⣾
-- `dots12`: ⢀⡀⠄⠂⠁⠈⠐⠠⢀
-- `line`: |/-\
+The following spinner styles are available (built-in Rich spinners):
+
+- `dots` (default): A simple dots animation
+- `dots2`: Alternative dots animation
+- `dots3`: Another dots variation
+- `dots12`: Multi-dot animation 
+- `line`: Simple line animation
 - `aesthetic`: Shows a progress-like animation
-- `bounce`: ⠁⠂⠄⡀⢀⠠⠐⠈
-- `moon`: 🌑🌒🌓🌔🌕🌖🌗🌘
-- `clock`: 🕐🕑🕒🕓🕔🕕🕖🕗🕘🕙🕚🕛
-- `simple`: ←↖↑↗→↘↓↙
-- `thinking`: 🤔 🧠 💭 💡
+- `bounce`: Bouncing point animation (maps to Rich's "point" spinner)
+- `moon`: Moon phase animation
+- `clock`: Clock animation
+- `simple`: Arrow animation (maps to Rich's "arrow" spinner)
+- `thinking`: Thinking animation (maps to Rich's "dots10" spinner)
 
 ### Integration with API Requests
 
@@ -62,5 +64,5 @@ response = api_request(
 You can customize the loading spinner by modifying the following parameters:
 
 - `message`: The text to display next to the spinner
-- `spinner_style`: The animation style to use
+- `spinner_style`: The animation style to use (see available options above)
 - `color`: The color of the message and spinner (e.g., "blue", "green", "yellow", "red") 

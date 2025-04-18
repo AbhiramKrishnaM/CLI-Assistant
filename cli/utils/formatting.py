@@ -77,35 +77,25 @@ def loading_spinner(message: str = "Processing", spinner_style: str = "dots", co
     """
     # Dictionary of spinner styles
     spinner_styles = {
-        "dots": "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏",
-        "dots2": "⣾⣽⣻⢿⡿⣟⣯⣷",
-        "dots3": "⣷⣯⣟⡿⢿⣻⣽⣾",
-        "dots12": "⢀⡀⠄⠂⠁⠈⠐⠠⢀",
-        "line": "|/-\\",
-        "aesthetic": "▰▱▰▱▱▱▱▱▱▱ ▰▰▱▱▱▱▱▱▱▱ ▰▰▰▱▱▱▱▱▱▱ ▰▰▰▰▱▱▱▱▱▱ ▰▰▰▰▰▱▱▱▱▱ ▰▰▰▰▰▰▱▱▱▱ ▰▰▰▰▰▰▰▱▱▱ ▰▰▰▰▰▰▰▰▱▱ ▰▰▰▰▰▰▰▰▰▱ ▰▰▰▰▰▰▰▰▰▰",
-        "bounce": "⠁⠂⠄⡀⢀⠠⠐⠈",
-        "moon": "🌑🌒🌓🌔🌕🌖🌗🌘",
-        "clock": "🕐🕑🕒🕓🕔🕕🕖🕗🕘🕙🕚🕛",
-        "simple": "←↖↑↗→↘↓↙",
-        "thinking": "🤔  🧠  💭  💡  "
+        "dots": "dots",
+        "dots2": "dots2",
+        "dots3": "dots3",
+        "dots12": "dots12",
+        "line": "line",
+        "aesthetic": "aesthetic",
+        "bounce": "point",
+        "moon": "moon",
+        "clock": "clock",
+        "simple": "arrow",
+        "thinking": "dots10"
     }
     
-    # Select spinner style or default to dots if not found
-    spinner_text = spinner_styles.get(spinner_style, spinner_styles["dots"])
+    # Get the spinner name (Rich uses predefined spinner names)
+    spinner_name = spinner_styles.get(spinner_style, "dots")
     formatted_message = f"[bold {color}]{message}[/bold {color}]"
     
-    if spinner_style == "aesthetic":
-        # Special handling for the aesthetic spinner which shows progress
-        with console.status(formatted_message, spinner="aesthetic") as status:
-            try:
-                yield
-            finally:
-                pass
-    else:
-        # Standard spinner
-        spinner = Spinner(spinner_text, formatted_message)
-        with console.status(spinner) as status:
-            try:
-                yield
-            finally:
-                pass 
+    with console.status(formatted_message, spinner=spinner_name) as status:
+        try:
+            yield
+        finally:
+            pass 
