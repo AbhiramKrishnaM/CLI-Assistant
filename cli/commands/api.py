@@ -5,6 +5,11 @@ import typer
 import requests
 from typing import Dict, Optional
 from datetime import datetime
+from rich import print
+from rich.table import Table
+from cli.utils.api import api_request, OLLAMA_AVAILABLE, get_available_local_models
+from cli.utils.formatting import print_json, print_error, print_success, print_info
+from cli.utils.config import get_config_value, set_config_value
 
 app = typer.Typer(help="Test and format API requests")
 
@@ -13,75 +18,156 @@ REQUESTS_DIR = os.path.expanduser("~/.aidev/requests")
 
 @app.command()
 def request(
-    url: str = typer.Argument(..., help="API endpoint URL"),
-    method: str = typer.Option("GET", "--method", "-m", help="HTTP method (GET, POST, PUT, DELETE)"),
-    headers: Optional[str] = typer.Option(None, "--headers", "-h", help="JSON headers string"),
-    data: Optional[str] = typer.Option(None, "--data", "-d", help="JSON data string for request body"),
-    save: Optional[str] = typer.Option(None, "--save", "-s", help="Save request with this name"),
-    timeout: int = typer.Option(30, "--timeout", "-t", help="Request timeout in seconds"),
+    endpoint: str = typer.Argument(..., help="API endpoint to request"),
+    method: str = typer.Option("GET", "--method", "-m", help="HTTP method to use"),
+    data: Optional[str] = typer.Option(None, "--data", "-d", help="JSON data payload"),
+    query: Optional[str] = typer.Option(None, "--query", "-q", help="URL query parameters as JSON"),
+    use_local: bool = typer.Option(False, "--local", "-l", help="Use local Ollama model (only for text generation)"),
+    model: str = typer.Option(None, "--model", help="Model to use for local generation"),
 ):
-    """Make an API request and display the response."""
-    # Process headers
-    header_dict = {}
-    if headers:
-        try:
-            header_dict = json.loads(headers)
-        except json.JSONDecodeError:
-            typer.echo("Error: Headers must be a valid JSON object", err=True)
-            return
+    """Make a direct request to the API."""
+    print(f"Making {method} request to {endpoint}")
     
-    # Process data
+    # Parse data and query if provided
     data_dict = None
     if data:
         try:
             data_dict = json.loads(data)
         except json.JSONDecodeError:
-            typer.echo("Error: Data must be a valid JSON object", err=True)
+            print_error("Invalid JSON in data payload")
+            return
+    
+    query_dict = None
+    if query:
+        try:
+            query_dict = json.loads(query)
+        except json.JSONDecodeError:
+            print_error("Invalid JSON in query parameters")
             return
     
     # Make the request
-    try:
-        method = method.upper()
-        typer.echo(f"Making {method} request to {url}...")
+    response = api_request(
+        endpoint=endpoint,
+        method=method,
+        data=data_dict,
+        params=query_dict,
+        use_local_model=use_local,
+        local_model_name=model
+    )
+    
+    # Display the response
+    if "error" in response:
+        print_error("Request failed")
+        print(response.get("message", "Unknown error"))
+    else:
+        print_success("Request successful")
+        print_json(response, "Response")
+
+@app.command()
+def config(
+    show_all: bool = typer.Option(False, "--all", help="Show all config values"),
+    set_ollama_url: Optional[str] = typer.Option(None, "--set-ollama-url", help="Set the Ollama API URL"),
+    set_ollama_model: Optional[str] = typer.Option(None, "--set-ollama-model", help="Set the default Ollama model"),
+    set_ollama_timeout: Optional[int] = typer.Option(None, "--set-ollama-timeout", help="Set the Ollama API timeout"),
+    toggle_ollama: Optional[bool] = typer.Option(None, "--ollama-enabled", help="Enable or disable Ollama integration"),
+):
+    """Configure API settings including Ollama integration."""
+    changes_made = False
+    
+    # Apply any changes
+    if set_ollama_url is not None:
+        set_config_value("ollama.url", set_ollama_url)
+        print_success(f"Set Ollama API URL to: {set_ollama_url}")
+        changes_made = True
         
-        response = requests.request(
-            method=method,
-            url=url,
-            headers=header_dict,
-            json=data_dict,
-            timeout=timeout,
-        )
-        
-        # Format response time
-        elapsed = response.elapsed.total_seconds()
-        elapsed_str = f"{elapsed:.2f}s"
-        
-        # Get the response content
-        try:
-            response_json = response.json()
-            response_content = json.dumps(response_json, indent=2)
-            content_type = "application/json"
-        except json.JSONDecodeError:
-            response_content = response.text
-            content_type = response.headers.get("Content-Type", "text/plain")
-        
-        # Display response
-        typer.echo(f"\nStatus: {response.status_code} {response.reason}")
-        typer.echo(f"Time: {elapsed_str}")
-        typer.echo(f"Content-Type: {content_type}")
-        typer.echo("\nResponse Headers:")
-        for key, value in response.headers.items():
-            typer.echo(f"  {key}: {value}")
-        
-        typer.echo("\nResponse Body:")
-        typer.echo(response_content)
-        
-        # Save request if specified
-        if save:
-            _save_request(save, method, url, header_dict, data_dict, response)
-            
-    except requests.RequestException as e:
-        typer.echo(f"Error: {str(e)}", err=True)
+    if set_ollama_model is not None:
+        set_config_value("ollama.default_model", set_ollama_model)
+        print_success(f"Set default Ollama model to: {set_ollama_model}")
+        changes_made = True
+    
+    if set_ollama_timeout is not None:
+        set_config_value("ollama.timeout", set_ollama_timeout)
+        print_success(f"Set Ollama timeout to: {set_ollama_timeout} seconds")
+        changes_made = True
+    
+    if toggle_ollama is not None:
+        set_config_value("ollama.enabled", toggle_ollama)
+        print_success(f"{'Enabled' if toggle_ollama else 'Disabled'} Ollama integration")
+        changes_made = True
+    
+    # Show configuration
+    table = Table(title="API Configuration")
+    table.add_column("Setting", style="cyan")
+    table.add_column("Value", style="green")
+    
+    # API settings
+    backend_url = get_config_value("backend.url")
+    backend_timeout = get_config_value("backend.timeout")
+    
+    table.add_row("Backend URL", backend_url)
+    table.add_row("Backend Timeout", str(backend_timeout) + " seconds")
+    
+    # Ollama settings
+    ollama_enabled = get_config_value("ollama.enabled", True)
+    ollama_url = get_config_value("ollama.url", "http://localhost:11434/api")
+    ollama_model = get_config_value("ollama.default_model", "deepseek-r1:7b")
+    ollama_timeout = get_config_value("ollama.timeout", 60)
+    
+    table.add_row("Ollama Enabled", "✅ Yes" if ollama_enabled else "❌ No")
+    table.add_row("Ollama API URL", ollama_url)
+    table.add_row("Default Ollama Model", ollama_model)
+    table.add_row("Ollama Timeout", str(ollama_timeout) + " seconds")
+    
+    # Ollama status
+    if OLLAMA_AVAILABLE:
+        table.add_row("Ollama Status", "✅ Connected")
+        models = get_available_local_models()
+        if models:
+            table.add_row("Available Models", ", ".join(models))
+        else:
+            table.add_row("Available Models", "None found")
+    else:
+        table.add_row("Ollama Status", "❌ Not connected")
+    
+    print(table)
+    
+    if not changes_made:
+        print_info("To update settings, use the options like --set-ollama-url or --ollama-enabled")
+        if not OLLAMA_AVAILABLE and ollama_enabled:
+            print_info("Ollama is enabled in config but not available. Make sure Ollama is installed and running.")
+            print_info("Install instructions: https://github.com/ollama/ollama")
+
+@app.command()
+def ollama_models():
+    """List available models from Ollama."""
+    if not OLLAMA_AVAILABLE:
+        print_error("Ollama is not available. Make sure it's installed and running.")
+        print_info("Install instructions: https://github.com/ollama/ollama")
+        return
+    
+    models = get_available_local_models()
+    
+    if not models:
+        print_info("No models found in Ollama.")
+        print_info("You can pull models with: ollama pull <model-name>")
+        print_info("Example: ollama pull deepseek-r1:7b")
+        return
+    
+    table = Table(title="Available Ollama Models")
+    table.add_column("Model Name", style="cyan")
+    
+    for model in models:
+        table.add_row(model)
+    
+    print(table)
+    
+    default_model = get_config_value("ollama.default_model", "deepseek-r1:7b")
+    if default_model in models:
+        print_success(f"Default model is set to: {default_model}")
+    else:
+        print_info(f"Default model ({default_model}) is not available. You might want to update it.")
+        if models:
+            print_info(f"You can use: api config --set-ollama-model {models[0]}")
 
 @app.command()
 def list_saved():
@@ -147,10 +233,10 @@ def load(
         if execute:
             typer.echo("\nExecuting request...")
             request(
-                url=request_data.get("url", ""),
+                endpoint=request_data.get("url", ""),
                 method=request_data.get("method", "GET"),
-                headers=json.dumps(headers) if headers else None,
                 data=json.dumps(data) if data else None,
+                query=json.dumps(request_data.get("query", {})) if request_data.get("query") else None,
             )
     
     except (json.JSONDecodeError, IOError) as e:

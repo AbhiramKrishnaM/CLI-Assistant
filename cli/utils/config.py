@@ -24,6 +24,12 @@ DEFAULT_CONFIG = {
     "history": {
         "save_history": True,
         "max_history_items": 100,
+    },
+    "ollama": {
+        "enabled": True,
+        "url": "http://localhost:11434/api",
+        "default_model": "deepseek-r1:7b",
+        "timeout": 60
     }
 }
 
@@ -44,6 +50,22 @@ def load_config() -> Dict[str, Any]:
     try:
         with open(CONFIG_FILE, "r") as f:
             config = json.load(f)
+            
+        # Make sure the config has the latest keys
+        updated = False
+        for section, values in DEFAULT_CONFIG.items():
+            if section not in config:
+                config[section] = values
+                updated = True
+            elif isinstance(values, dict):
+                for key, value in values.items():
+                    if key not in config[section]:
+                        config[section][key] = value
+                        updated = True
+        
+        if updated:
+            save_config(config)
+            
         return config
     except json.JSONDecodeError:
         # If the config file is corrupted, use the default
