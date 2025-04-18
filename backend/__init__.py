@@ -1,1 +1,0 @@
-"""Backend service for the AI CLI Assistant.""" 
