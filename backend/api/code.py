@@ -12,125 +12,6 @@ from backend.services.model_manager import model_manager
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# Predefined examples for common code tasks
-PREDEFINED_EXAMPLES = {
-    "python": {
-        "fibonacci": '''
-def fibonacci(n):
-    """Calculate the Fibonacci sequence up to n terms."""
-    fib_sequence = [0, 1]
-    
-    if n <= 0:
-        return []
-    elif n == 1:
-        return [0]
-    elif n == 2:
-        return fib_sequence
-    
-    for i in range(2, n):
-        fib_sequence.append(fib_sequence[i-1] + fib_sequence[i-2])
-    
-    return fib_sequence
-
-# Example usage
-if __name__ == "__main__":
-    n = 10
-    result = fibonacci(n)
-    print(f"Fibonacci sequence up to {n} terms: {result}")
-''',
-        "factorial": '''
-def factorial(n):
-    """Calculate the factorial of a non-negative integer n."""
-    if n < 0:
-        raise ValueError("Factorial is not defined for negative numbers")
-    
-    if n == 0 or n == 1:
-        return 1
-    
-    result = 1
-    for i in range(2, n + 1):
-        result *= i
-    
-    return result
-
-# Alternate recursive implementation
-def factorial_recursive(n):
-    """Calculate factorial recursively."""
-    if n < 0:
-        raise ValueError("Factorial is not defined for negative numbers")
-    if n == 0 or n == 1:
-        return 1
-    return n * factorial_recursive(n - 1)
-
-# Example usage
-if __name__ == "__main__":
-    number = 5
-    print(f"Factorial of {number} is {factorial(number)}")
-    print(f"Factorial of {number} (recursive) is {factorial_recursive(number)}")
-''',
-        "sort": '''
-def bubble_sort(arr):
-    """Sort an array using bubble sort algorithm."""
-    n = len(arr)
-    for i in range(n):
-        # Flag to optimize if no swaps occur
-        swapped = False
-        
-        # Last i elements are already in place
-        for j in range(0, n-i-1):
-            if arr[j] > arr[j+1]:
-                arr[j], arr[j+1] = arr[j+1], arr[j]
-                swapped = True
-                
-        # If no swapping occurred in this pass, array is sorted
-        if not swapped:
-            break
-    
-    return arr
-
-def quick_sort(arr):
-    """Sort an array using quick sort algorithm."""
-    if len(arr) <= 1:
-        return arr
-    
-    pivot = arr[len(arr) // 2]
-    left = [x for x in arr if x < pivot]
-    middle = [x for x in arr if x == pivot]
-    right = [x for x in arr if x > pivot]
-    
-    return quick_sort(left) + middle + quick_sort(right)
-
-# Using Python's built-in sort
-def python_sort(arr):
-    """Sort an array using Python's built-in sort."""
-    # Create a copy to avoid modifying the original
-    sorted_arr = arr.copy()
-    sorted_arr.sort()
-    return sorted_arr
-
-# Example usage
-if __name__ == "__main__":
-    # Sample array
-    numbers = [64, 34, 25, 12, 22, 11, 90]
-    
-    # Bubble sort (modifies the original)
-    bubble_sorted = bubble_sort(numbers.copy())
-    print(f"Bubble sort: {bubble_sorted}")
-    
-    # Quick sort (returns a new sorted array)
-    quick_sorted = quick_sort(numbers)
-    print(f"Quick sort: {quick_sorted}")
-    
-    # Python's built-in sort
-    python_sorted = python_sort(numbers)
-    print(f"Python sort: {python_sorted}")
-    
-    # One-liner using sorted() function (returns a new sorted array)
-    print(f"Using sorted(): {sorted(numbers)}")
-'''
-    }
-}
-
 
 @router.post("/generate", response_model=CodeGenerationResponse)
 async def generate_code(request: CodeGenerationRequest):
@@ -138,35 +19,7 @@ async def generate_code(request: CodeGenerationRequest):
     logger.info(f"Code generation request for {request.language}")
     
     try:
-        description_lower = request.description.lower()
-        
-        # Check for predefined examples first
-        if request.language in PREDEFINED_EXAMPLES:
-            # Check for Fibonacci pattern
-            if "fibonacci" in description_lower or "fib" in description_lower:
-                return CodeGenerationResponse(
-                    code=PREDEFINED_EXAMPLES[request.language]["fibonacci"], 
-                    language=request.language,
-                    model_used="predefined_examples"
-                )
-                
-            # Check for Factorial pattern
-            elif "factorial" in description_lower or "fact" in description_lower:
-                return CodeGenerationResponse(
-                    code=PREDEFINED_EXAMPLES[request.language]["factorial"], 
-                    language=request.language,
-                    model_used="predefined_examples"
-                )
-                
-            # Check for Sorting pattern
-            elif "sort" in description_lower:
-                return CodeGenerationResponse(
-                    code=PREDEFINED_EXAMPLES[request.language]["sort"], 
-                    language=request.language,
-                    model_used="predefined_examples"
-                )
-        
-        # Fallback to model inference if no predefined example matches
+        # Skip predefined examples check and always use model inference
         prompt = f"# {request.language} code to {request.description}\n\n"
         
         # Generate the code using the appropriate model
@@ -177,7 +30,7 @@ async def generate_code(request: CodeGenerationRequest):
             max_length=request.max_length or 2048,
         )
         
-        # If there's an error in the response, return a predefined example or a simple example
+        # If there's an error in the response, return a simple example
         if code.startswith("Error"):
             logger.warning(f"Error in code generation, using fallback. Error: {code}")
             return CodeGenerationResponse(
