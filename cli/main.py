@@ -1,11 +1,28 @@
+"""AI-powered CLI assistant for developers."""
 import typer
+from rich import print
+from cli.commands import code, terminal, git, docs, api
 
 app = typer.Typer(help="AI-powered CLI assistant for developers")
 
+# Add subcommands
+app.add_typer(code.app, name="code", help="Generate and manage code snippets")
+app.add_typer(terminal.app, name="terminal", help="Get help with terminal commands")
+app.add_typer(git.app, name="git", help="Git operations assistance")
+app.add_typer(docs.app, name="docs", help="Search and summarize documentation")
+app.add_typer(api.app, name="api", help="Test and format API requests")
+
 @app.command()
 def hello():
-    """Simple command to test the CLI assistant for developers"""
-    print("Hello! AI CLI Assistant is ready to help you.")
+    """Simple command to test the CLI assistant for developers."""
+    print("[bold green]Hello! AI CLI Assistant is ready to help you.[/bold green]")
+    print("\nAvailable commands:")
+    print("  [blue]code[/blue]      - Generate and manage code snippets")
+    print("  [blue]terminal[/blue]  - Get help with terminal commands")
+    print("  [blue]git[/blue]       - Git operations assistance")
+    print("  [blue]docs[/blue]      - Search and summarize documentation")
+    print("  [blue]api[/blue]       - Test and format API requests")
+    print("\nRun [yellow]aidev --help[/yellow] for more information.")
 
 if __name__ == "__main__":
     app()
