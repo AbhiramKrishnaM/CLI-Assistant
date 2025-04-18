@@ -1,0 +1,77 @@
+# Project-specific files
+Tasks.md
+project.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
+venv/
+env/
+ENV/
+.env
+.venv
+env.bak/
+venv.bak/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+
+# Log files
+*.log
+logs/
+
+# Database
+*.db
+*.sqlite3
+
+# Models and large data files
+models/
+*.bin
+*.h5
+*.pkl
+*.pt
+
+# Fastapi/Swagger specific
+docs_build/
+
+# Local development config
+config.local.py
+.env.local
