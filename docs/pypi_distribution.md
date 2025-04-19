@@ -1,6 +1,6 @@
 # PyPI Distribution
 
-This guide explains how to distribute and install the aidev CLI Assistant via PyPI.
+This guide explains how to distribute and install the AI CLI Assistant via PyPI.
 
 ## Installation from PyPI
 
@@ -8,10 +8,10 @@ Once the package is published to PyPI, users can install it with pip:
 
 ```bash
 # Install from PyPI
-pip install aidev
+pip install ai-cli-assistant
 
 # Install a specific version
-pip install aidev==0.1.0
+pip install ai-cli-assistant==0.1.0
 ```
 
 ## Development Installation
@@ -20,8 +20,8 @@ For development work, install the package in editable mode:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/aidev.git
-cd aidev
+git clone https://github.com/yourusername/ai-cli-assistant.git
+cd ai-cli-assistant
 
 # Install in development mode
 pip install -e .
@@ -100,7 +100,7 @@ Replace `your-pypi-api-token` and `your-testpypi-api-token` with your actual API
 To test the package from TestPyPI:
 
 ```bash
-pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ aidev
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ ai-cli-assistant
 ```
 
 The `--extra-index-url` ensures dependencies come from the main PyPI repository. 

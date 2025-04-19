@@ -16,7 +16,7 @@ import shutil
 def clean_build_dirs():
     """Clean build directories."""
     print("Cleaning build directories...")
-    for dir_name in ["build", "dist", "aidev.egg-info"]:
+    for dir_name in ["build", "dist", "ai_cli_assistant.egg-info"]:
         if os.path.exists(dir_name):
             shutil.rmtree(dir_name)
 

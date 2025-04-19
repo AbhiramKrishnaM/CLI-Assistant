@@ -21,17 +21,20 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
+        python -m pip install --upgrade pip setuptools wheel
+        # Install minimal core dependencies directly
+        pip install typer rich click httpx pydantic jinja2 requests shellingham
+        # Install the package in development mode
         python -m pip install -e .
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Verify imports
       run: |
         # Test that basic imports work
         python -c "import cli; print('CLI package imports successfully')"
     - name: Run basic tests
       run: |
-        # Run any basic tests if they exist
+        # Install pytest if tests directory exists
         if [ -d tests ]; then
+          pip install pytest
           pytest -xvs tests || true
         else
           echo "No tests found"
