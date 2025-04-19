@@ -18,4 +18,4 @@ black>=23.3.0  # For code formatting
 isort>=5.12.0  # For import sorting
 pre-commit>=3.3.2  # For managing pre-commit hooks
 flake8-docstrings>=1.7.0  # For docstring linting
-types-requests>=2.31.0  # Type stubs for requests 
+types-requests>=2.31.0  # Type stubs for requests

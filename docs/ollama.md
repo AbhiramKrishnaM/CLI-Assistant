@@ -144,4 +144,4 @@ If you're having issues with Ollama:
 5. Test a simple generation:
    ```
    ollama run deepseek-r1:7b "Hello, how are you?"
-   ``` 
+   ```

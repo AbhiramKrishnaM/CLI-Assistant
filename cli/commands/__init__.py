@@ -1,1 +1,1 @@
-"""Command modules for the AI CLI assistant.""" 
+"""Command modules for the AI CLI assistant."""

@@ -35,7 +35,7 @@ pip install typer rich click httpx pydantic jinja2 requests shellingham
 echo -e "${YELLOW}Checking for Ollama...${NC}"
 if command -v ollama &> /dev/null; then
     echo -e "${GREEN}Ollama is installed.${NC}"
-    
+
     # Check if DeepSeek model is available
     if ollama list | grep -q "deepseek-r1:7b"; then
         echo -e "${GREEN}DeepSeek-R1 7B model is available.${NC}"
@@ -83,4 +83,4 @@ fi
 echo -e "${GREEN}Installation complete!${NC}"
 echo -e "To use aidev, make sure the virtual environment is activated:"
 echo -e "    source .venv/bin/activate"
-echo -e "Try running 'aidev hello' to get started." 
+echo -e "Try running 'aidev hello' to get started."

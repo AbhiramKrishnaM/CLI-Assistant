@@ -30,20 +30,20 @@ class MyNewModel(BaseAIModel):
     @property
     def model_name(self) -> str:
         return "my-model-name"
-    
+
     @classmethod
     def is_available(cls) -> bool:
         # Check if this model is available
         return True
-    
+
     def generate_text(self, prompt, **kwargs):
         # Implement text generation
         pass
-    
+
     def generate_code(self, description, language, **kwargs):
         # Implement code generation
         pass
-    
+
     def generate_embeddings(self, texts):
         # Implement embedding generation
         pass
@@ -85,4 +85,4 @@ default_model = "deepseek-r1:7b"
 [ollama]
 url = "http://localhost:11434/api"
 timeout = 60
-``` 
+```

@@ -12,11 +12,7 @@ This guide provides information for developers who want to contribute to the aid
 
 2. Use the clean installation script to set up a development environment:
    ```bash
-   # Linux/Mac
    ./scripts/clean_install.sh
-   
-   # Windows
-   scripts\clean_install.bat
    ```
 
 This will create a virtual environment, install all dependencies, and set up pre-commit hooks.
@@ -30,11 +26,7 @@ We use pre-commit hooks to ensure code quality and consistency. These hooks run 
 If you didn't use the clean installation script, you can set up the pre-commit hooks manually:
 
 ```bash
-# Linux/Mac
 ./scripts/setup_hooks.sh
-
-# Windows
-scripts\setup_hooks.bat
 ```
 
 ### Available Hooks
@@ -132,4 +124,4 @@ pytest -v
 - [isort Documentation](https://pycqa.github.io/isort/)
 - [Flake8 Documentation](https://flake8.pycqa.org/en/latest/)
 - [MyPy Documentation](https://mypy.readthedocs.io/en/stable/)
-- [Pre-commit Documentation](https://pre-commit.com/) 
+- [Pre-commit Documentation](https://pre-commit.com/)

@@ -57,4 +57,4 @@ fi
 
 echo
 echo -e "${GREEN}All components verified!${NC}"
-echo "Try running 'aidev hello' to get started." 
+echo "Try running 'aidev hello' to get started."

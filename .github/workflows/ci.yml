@@ -58,4 +58,4 @@ jobs:
     - name: Verify CLI command works
       run: |
         # Check that the CLI command is installed correctly
-        aidev --version 
+        aidev --version

@@ -103,4 +103,4 @@ To test the package from TestPyPI:
 pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ ai-cli-assistant
 ```
 
-The `--extra-index-url` ensures dependencies come from the main PyPI repository. 
+The `--extra-index-url` ensures dependencies come from the main PyPI repository.

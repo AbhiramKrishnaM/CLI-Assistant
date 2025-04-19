@@ -32,4 +32,4 @@ jobs:
         isort --check .
     - name: Type check with mypy
       run: |
-        mypy cli backend 
+        mypy cli backend

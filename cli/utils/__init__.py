@@ -1,1 +1,1 @@
-"""CLI utilities package.""" 
+"""CLI utilities package."""

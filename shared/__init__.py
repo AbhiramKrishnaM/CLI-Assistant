@@ -1,1 +1,1 @@
-"""Shared code between CLI and backend.""" 
+"""Shared code between CLI and backend."""

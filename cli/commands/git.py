@@ -1,42 +1,60 @@
 """Git operations assistance."""
 import os
 import subprocess
+from typing import Dict, List, Optional
+
 import typer
-from typing import Optional, List
 from rich import print
 from rich.panel import Panel
+
 from cli.utils.api import api_request, get_available_local_models
-from cli.utils.formatting import print_error, print_success, print_info, print_warning
+from cli.utils.formatting import print_error, print_info, print_success, print_warning
 
 app = typer.Typer(help="Git operations assistance")
 
-def _run_git_command(cmd):
+
+def _run_git_command(cmd: List[str]) -> str:
     """Run a git command and return the output."""
     try:
         return subprocess.check_output(cmd, stderr=subprocess.STDOUT, text=True)
     except subprocess.CalledProcessError as e:
         return f"Error: {e.output}"
 
+
 @app.command()
 def generate_commit(
-    message_type: str = typer.Option("conventional", help="Commit message type (conventional or descriptive)"),
-    files: Optional[bool] = typer.Option(False, "--files", "-f", help="Show changed files in the message"),
-    use_local: bool = typer.Option(True, "--local/--api", help="Use local AI model instead of API backend"),
-    model: str = typer.Option("deepseek-r1:7b", "--model", "-m", help="Specify which local model to use"),
-    no_stream: bool = typer.Option(False, "--no-stream", help="Disable streaming for local models"),
-    show_thinking: bool = typer.Option(True, "--show-thinking/--no-thinking", help="Show or hide model's thinking process")
-):
+    message_type: str = typer.Option(
+        "conventional", help="Commit message type (conventional or descriptive)"
+    ),
+    files: Optional[bool] = typer.Option(
+        False, "--files", "-f", help="Show changed files in the message"
+    ),
+    use_local: bool = typer.Option(
+        True, "--local/--api", help="Use local AI model instead of API backend"
+    ),
+    model: str = typer.Option(
+        "deepseek-r1: 7b", "--model", "-m", help="Specify which local model to use"
+    ),
+    no_stream: bool = typer.Option(
+        False, "--no-stream", help="Disable streaming for local models"
+    ),
+    show_thinking: bool = typer.Option(
+        True,
+        "--show-thinking/--no-thinking",
+        help="Show or hide model's thinking process",
+    ),
+) -> None:
     """Generate a commit message for the current changes."""
     # Get changed files
     status_output = _run_git_command(["git", "status", "--porcelain"])
-    
+
     if not status_output or status_output.startswith("Error"):
         if "Error" in status_output:
             print_error(status_output)
         else:
             print_error("No changes to commit.")
         return
-    
+
     # Process changed files
     changes = []
     for line in status_output.splitlines():
@@ -44,45 +62,53 @@ def generate_commit(
             status = line[:2].strip()
             file_path = line[3:]
             changes.append((status, file_path))
-    
+
     # Check Ollama availability for local model usage
-        
+
     if use_local:
         local_models = get_available_local_models()
         if not local_models:
-            print_warning("No local models found in Ollama. Falling back to simple generation.")
+            print_warning(
+                "No local models found in Ollama. Falling back to simple generation."
+            )
             use_local = False
         elif model not in local_models:
-            print_warning(f"Model '{model}' not found. Available models: {', '.join(local_models)}")
-            if "deepseek-r1:7b" in local_models:
-                model = "deepseek-r1:7b"
-                print_info(f"Using deepseek-r1:7b instead.")
+            print_warning(
+                f"Model '{model}' not found. Available models: {', '.join(local_models)}"
+            )
+            if "deepseek-r1: 7b" in local_models:
+                model = "deepseek-r1: 7b"
+                print_info("Using deepseek-r1: 7b instead.")
             else:
                 model = local_models[0]
                 print_info(f"Using {model} instead.")
-    
+
     if use_local:
         # Get the diff for context
         diff_output = _run_git_command(["git", "diff", "--cached", "--stat"])
         if not diff_output or diff_output.startswith("Error"):
             diff_output = _run_git_command(["git", "diff", "--stat"])
-        
+
         # Get the full diff for better context
         full_diff = _run_git_command(["git", "diff", "--cached"])
         if not full_diff or full_diff.startswith("Error"):
             full_diff = _run_git_command(["git", "diff"])
-        
+
         # If the diff is too large, truncate it
         if len(full_diff) > 4000:
             full_diff = full_diff[:4000] + "\n... (diff truncated for brevity)"
-        
+
         # Build the prompt
-        changes_summary = "\n".join([f"{status}: {file_path}" for status, file_path in changes])
-        
+        changes_summary = "\n".join(
+            [f"{status}: {file_path}" for status, file_path in changes]
+        )
+
         # Get the repository name
         repo_name = "unknown"
         try:
-            remote_url = _run_git_command(["git", "remote", "get-url", "origin"]).strip()
+            remote_url = _run_git_command(
+                ["git", "remote", "get-url", "origin"]
+            ).strip()
             if remote_url:
                 # Extract repository name from URL
                 if "github.com" in remote_url:
@@ -91,11 +117,13 @@ def generate_commit(
                     repo_name = remote_url.split("gitlab")[-1].replace(".git", "")
                 else:
                     # Just use the last part of the path
-                    repo_name = os.path.basename(os.path.normpath(remote_url.replace(".git", "")))
+                    repo_name = os.path.basename(
+                        os.path.normpath(remote_url.replace(".git", ""))
+                    )
         except:
             # Fallback to directory name
             repo_name = os.path.basename(os.getcwd())
-        
+
         # Create the prompt for the LLM
         commit_prompt = f"""Generate a {message_type} commit message for the following changes in the repository '{repo_name}'.
 
@@ -117,23 +145,23 @@ Guidelines:
 
 Format your response as a complete commit message.
 """
-        
+
         # Request commit message from Ollama
         response = api_request(
-            endpoint="/text/generate", 
+            endpoint="/text/generate",
             method="POST",
             data={
                 "prompt": commit_prompt,
                 "temperature": 0.3,
                 "max_length": 512,
                 "stream": not no_stream,
-                "show_thinking": show_thinking
+                "show_thinking": show_thinking,
             },
             loading_message=f"Generating commit message with {model}...",
             use_local_model=use_local,
-            local_model_name=model
+            local_model_name=model,
         )
-        
+
         if "error" in response:
             print_error("Failed to generate commit message with Ollama.")
             # Fall back to simple generation
@@ -141,24 +169,31 @@ Format your response as a complete commit message.
         else:
             # Extract the commit message from the response
             commit_msg = response.get("text", "").strip()
-            
+
             # For streaming mode, we need to handle the final output differently
             if not no_stream:
                 print("\n")  # Add extra newline for separation
-                print_success(f"Commit message generated with {response.get('model_used', model)}.")
-                
+                print_success(
+                    f"Commit message generated with {response.get('model_used', model)}."
+                )
+
                 # If there are thinking sections in non-streaming mode, show them
-                if no_stream and "thinking" in response and response["thinking"] and show_thinking:
+                if (
+                    no_stream
+                    and "thinking" in response
+                    and response["thinking"]
+                    and show_thinking
+                ):
                     print_info("Model reasoning (click to expand):")
                     for i, thinking in enumerate(response["thinking"], 1):
                         panel = Panel(
                             thinking.strip(),
                             title=f"[bold]Thinking Process #{i}[/bold]",
                             subtitle="[dim][click to collapse][/dim]",
-                            border_style="blue"
+                            border_style="blue",
                         )
                         print(panel)
-                
+
                 # Ask to use the message
                 if typer.confirm("Use this commit message?"):
                     result = _run_git_command(["git", "commit", "-m", commit_msg])
@@ -166,9 +201,9 @@ Format your response as a complete commit message.
                 return
             else:
                 # For non-streaming mode, display the message
-                print(f"\n[bold green]Generated commit message:[/bold green]")
+                print("\n[bold green]Generated commit message: [/bold green]")
                 print(commit_msg)
-                
+
                 # Display thinking sections for non-streaming mode if available
                 if "thinking" in response and response["thinking"] and show_thinking:
                     print_info("Model reasoning (click to expand):")
@@ -177,16 +212,16 @@ Format your response as a complete commit message.
                             thinking.strip(),
                             title=f"[bold]Thinking Process #{i}[/bold]",
                             subtitle="[dim][click to collapse][/dim]",
-                            border_style="blue"
+                            border_style="blue",
                         )
                         print(panel)
-                
+
                 # Ask to use the message
                 if typer.confirm("Use this commit message?"):
                     result = _run_git_command(["git", "commit", "-m", commit_msg])
                     print(result)
                 return
-    
+
     # Fallback to simple generation if not using Ollama or if Ollama fails
     if not use_local:
         # Generate the commit message
@@ -195,17 +230,22 @@ Format your response as a complete commit message.
             commit_type = "feat"
             if any(file_path.endswith((".md", ".txt")) for _, file_path in changes):
                 commit_type = "docs"
-            elif any(file_path == "package.json" or file_path.endswith(".lock") for _, file_path in changes):
+            elif any(
+                file_path == "package.json" or file_path.endswith(".lock")
+                for _, file_path in changes
+            ):
                 commit_type = "chore"
             elif any("test" in file_path for _, file_path in changes):
                 commit_type = "test"
-            
+
             msg = f"{commit_type}: update "
             if len(changes) == 1:
                 _, file_path = changes[0]
                 msg += os.path.basename(file_path)
             else:
-                most_common_dir = os.path.dirname(changes[0][1]) if "/" in changes[0][1] else ""
+                most_common_dir = (
+                    os.path.dirname(changes[0][1]) if "/" in changes[0][1] else ""
+                )
                 msg += most_common_dir if most_common_dir else "multiple files"
         else:
             # Descriptive message
@@ -216,71 +256,98 @@ Format your response as a complete commit message.
                 actions.append("Add")
             if any(status == "D" for status, _ in changes):
                 actions.append("Remove")
-            
+
             msg = " & ".join(actions)
             file_count = len(changes)
             msg += f" {file_count} " + ("file" if file_count == 1 else "files")
-        
+
         # Add files to the message if requested
         if files and changes:
-            files_list = "\n\n- " + "\n- ".join(f"{status}: {file_path}" for status, file_path in changes)
+            files_list = "\n\n- " + "\n- ".join(
+                f"{status}: {file_path}" for status, file_path in changes
+            )
             msg += files_list
-        
-        print(f"\n[bold green]Generated commit message:[/bold green]")
+
+        print("\n[bold green]Generated commit message: [/bold green]")
         print(msg)
-        
+
         # Ask to use the message
         if typer.confirm("Use this commit message?"):
             result = _run_git_command(["git", "commit", "-m", msg])
             print(result)
 
+
 @app.command()
 def pr_description(
-    use_local: bool = typer.Option(True, "--local/--api", help="Use local AI model instead of API backend"),
-    model: str = typer.Option("deepseek-r1:7b", "--model", "-m", help="Specify which local model to use"),
-    no_stream: bool = typer.Option(False, "--no-stream", help="Disable streaming for local models"),
-    show_thinking: bool = typer.Option(True, "--show-thinking/--no-thinking", help="Show or hide model's thinking process")
-):
+    use_local: bool = typer.Option(
+        True, "--local/--api", help="Use local AI model instead of API backend"
+    ),
+    model: str = typer.Option(
+        "deepseek-r1: 7b", "--model", "-m", help="Specify which local model to use"
+    ),
+    no_stream: bool = typer.Option(
+        False, "--no-stream", help="Disable streaming for local models"
+    ),
+    show_thinking: bool = typer.Option(
+        True,
+        "--show-thinking/--no-thinking",
+        help="Show or hide model's thinking process",
+    ),
+) -> None:
     """Generate a pull request description based on commits."""
     # Get commits that would be included in a PR
     try:
         main_branch = "main"
-        if not _run_git_command(["git", "show-ref", "--verify", "--quiet", f"refs/heads/{main_branch}"]):
+        if not _run_git_command(
+            ["git", "show-ref", "--verify", "--quiet", f"refs/heads/{main_branch}"]
+        ):
             main_branch = "master"
-        
-        commits = _run_git_command(["git", "log", f"{main_branch}..HEAD", "--pretty=format:%s"])
-        
+
+        commits = _run_git_command(
+            ["git", "log", f"{main_branch}..HEAD", "--pretty=format: %s"]
+        )
+
         if not commits:
             print_error("No commits found between current branch and main/master.")
             return
-        
+
         # Check Ollama availability for local model usage
-            
+
         if use_local:
             local_models = get_available_local_models()
             if not local_models:
-                print_warning("No local models found in Ollama. Falling back to simple generation.")
+                print_warning(
+                    "No local models found in Ollama. Falling back to simple generation."
+                )
                 use_local = False
             elif model not in local_models:
-                print_warning(f"Model '{model}' not found. Available models: {', '.join(local_models)}")
-                if "deepseek-r1:7b" in local_models:
-                    model = "deepseek-r1:7b"
-                    print_info(f"Using deepseek-r1:7b instead.")
+                print_warning(
+                    f"Model '{model}' not found. Available models: {', '.join(local_models)}"
+                )
+                if "deepseek-r1: 7b" in local_models:
+                    model = "deepseek-r1: 7b"
+                    print_info("Using deepseek-r1: 7b instead.")
                 else:
                     model = local_models[0]
                     print_info(f"Using {model} instead.")
-        
+
         if use_local:
             # Get more detailed information for better PR descriptions
             # Get the branch name
-            branch = _run_git_command(["git", "rev-parse", "--abbrev-ref", "HEAD"]).strip()
-            
+            branch = _run_git_command(
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"]
+            ).strip()
+
             # Get more detailed commit info
-            detailed_commits = _run_git_command(["git", "log", f"{main_branch}..HEAD", "--pretty=format:%h %s%n%b"])
-            
+            detailed_commits = _run_git_command(
+                ["git", "log", f"{main_branch}..HEAD", "--pretty=format: %h %s%n%b"]
+            )
+
             # Get a summary of changes
-            summary = _run_git_command(["git", "diff", f"{main_branch}..HEAD", "--stat"])
-            
+            summary = _run_git_command(
+                ["git", "diff", f"{main_branch}..HEAD", "--stat"]
+            )
+
             # Create a prompt for the PR description
             pr_prompt = f"""Generate a comprehensive pull request description for the following changes in branch '{branch}'.
 
@@ -300,23 +367,23 @@ Guidelines for a good PR description:
 
 Format the PR description in Markdown with appropriate headings, bullet points, and sections.
 """
-            
+
             # Request PR description from Ollama
             response = api_request(
-                endpoint="/text/generate", 
+                endpoint="/text/generate",
                 method="POST",
                 data={
                     "prompt": pr_prompt,
                     "temperature": 0.3,
                     "max_length": 1024,
                     "stream": not no_stream,
-                    "show_thinking": show_thinking
+                    "show_thinking": show_thinking,
                 },
                 loading_message=f"Generating PR description with {model}...",
                 use_local_model=use_local,
-                local_model_name=model
+                local_model_name=model,
             )
-            
+
             if "error" in response:
                 print_error("Failed to generate PR description with Ollama.")
                 # Fall back to simple generation
@@ -324,57 +391,70 @@ Format the PR description in Markdown with appropriate headings, bullet points, 
             else:
                 # Extract the PR description from the response
                 pr_desc = response.get("text", "").strip()
-                
+
                 # For streaming mode, we need to handle the final output differently
                 if not no_stream:
                     print("\n")  # Add extra newline for separation
-                    print_success(f"PR description generated with {response.get('model_used', model)}.")
-                    
+                    print_success(
+                        f"PR description generated with {response.get('model_used', model)}."
+                    )
+
                     # If there are thinking sections in non-streaming mode, show them
-                    if no_stream and "thinking" in response and response["thinking"] and show_thinking:
+                    if (
+                        no_stream
+                        and "thinking" in response
+                        and response["thinking"]
+                        and show_thinking
+                    ):
                         print_info("Model reasoning (click to expand):")
                         for i, thinking in enumerate(response["thinking"], 1):
                             panel = Panel(
                                 thinking.strip(),
                                 title=f"[bold]Thinking Process #{i}[/bold]",
                                 subtitle="[dim][click to collapse][/dim]",
-                                border_style="blue"
+                                border_style="blue",
                             )
                             print(panel)
                     return
                 else:
                     # For non-streaming mode, display the description
-                    print(f"\n[bold green]Generated PR Description:[/bold green]")
+                    print("\n[bold green]Generated PR Description: [/bold green]")
                     print(pr_desc)
-                    
+
                     # Display thinking sections for non-streaming mode if available
-                    if "thinking" in response and response["thinking"] and show_thinking:
+                    if (
+                        "thinking" in response
+                        and response["thinking"]
+                        and show_thinking
+                    ):
                         print_info("Model reasoning (click to expand):")
                         for i, thinking in enumerate(response["thinking"], 1):
                             panel = Panel(
                                 thinking.strip(),
                                 title=f"[bold]Thinking Process #{i}[/bold]",
                                 subtitle="[dim][click to collapse][/dim]",
-                                border_style="blue"
+                                border_style="blue",
                             )
                             print(panel)
                     return
-        
+
         # Fallback to simple generation if not using Ollama or if Ollama fails
         if not use_local:
-            print("Based on your commits, here's a suggested PR description:\n")
-            
+            print("Based on your commits, here's a suggested PR description: \n")
+
             # Generate title from branch name
-            branch = _run_git_command(["git", "rev-parse", "--abbrev-ref", "HEAD"]).strip()
+            branch = _run_git_command(
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"]
+            ).strip()
             title = branch.replace("-", " ").replace("_", " ").title()
             if title.startswith("Feature "):
                 title = title[8:]  # Remove "Feature " prefix
-            
+
             # Generate PR description
             description = f"# {title}\n\n## Changes\n\n"
-            
+
             # Group commits by type for conventional commits
-            commit_groups = {}
+            commit_groups: Dict[str, List[str]] = {}
             for line in commits.splitlines():
                 if ":" in line:
                     commit_type, message = line.split(":", 1)
@@ -385,16 +465,16 @@ Format the PR description in Markdown with appropriate headings, bullet points, 
                     if "Other" not in commit_groups:
                         commit_groups["Other"] = []
                     commit_groups["Other"].append(line.strip())
-            
+
             for group, messages in commit_groups.items():
                 description += f"### {group.capitalize()}\n"
                 for msg in messages:
                     description += f"- {msg}\n"
                 description += "\n"
-            
+
             description += "## Testing\n\n- [ ] Tests added for new functionality\n- [ ] All tests passing\n\n"
             description += "## Screenshots (if applicable)\n\n_Add screenshots here_\n"
-            
+
             print(description)
     except Exception as e:
-        print_error(f"Error generating PR description: {str(e)}") 
+        print_error(f"Error generating PR description: {str(e)}")
