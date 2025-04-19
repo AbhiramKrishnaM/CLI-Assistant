@@ -2,6 +2,9 @@
 import typer
 from rich import print
 from cli.commands import code, terminal, git, docs, api
+import importlib.metadata
+
+__version__ = importlib.metadata.version("aidev")
 
 app = typer.Typer(help="AI-powered CLI assistant for developers")
 
@@ -23,6 +26,15 @@ def hello():
     print("  [blue]docs[/blue]      - Search and summarize documentation")
     print("  [blue]api[/blue]       - Test and format API requests")
     print("\nRun [yellow]aidev --help[/yellow] for more information.")
+
+@app.callback()
+def callback(
+    version: bool = typer.Option(False, "--version", "-v", help="Show the application version")
+):
+    """Handle top-level CLI options."""
+    if version:
+        print(f"AI CLI Assistant version: {__version__}")
+        raise typer.Exit()
 
 if __name__ == "__main__":
     app()

@@ -1,3 +1,40 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aidev"
+version = "0.1.0"
+description = "AI-Powered CLI Assistant for Developers"
+readme = "README.md"
+authors = [
+    {name = "Developer", email = "developer@example.com"}
+]
+license = {text = "MIT"}
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "typer",
+    "rich",
+    "click",
+    "httpx",
+    "pydantic",
+    "jinja2"
+]
+
+[project.urls]
+Homepage = "https://github.com/AbhiramKrishnaM/aidev"
+Issues = "https://github.com/AbhiramKrishnaM/aidev/issues"
+
+[project.scripts]
+aidev = "cli.main:app"
+
 [tool.black]
 line-length = 88
 target-version = ['py38']

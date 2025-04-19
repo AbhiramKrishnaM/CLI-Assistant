@@ -31,10 +31,27 @@ The tool uses a pluggable model architecture that makes it easy to add support f
 
 ### Setup
 
+#### Installation from PyPI (Recommended)
+
+The easiest way to install the AI CLI Assistant is via pip:
+
+```bash
+pip install aidev
+```
+
+After installation, make sure to set up Ollama:
+
+```bash
+# Install the recommended DeepSeek model
+ollama pull deepseek-r1:7b
+```
+
+#### Installation from Source
+
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/ai-cli-assistant.git
-   cd ai-cli-assistant
+   git clone https://github.com/yourusername/aidev.git
+   cd aidev
    ```
 
 2. Create and activate a virtual environment:
@@ -191,7 +208,7 @@ For detailed instructions, see [cli/ai_agent_models/README.md](cli/ai_agent_mode
 ### Project Structure
 
 ```
-ai-cli-assistant/
+aidev/
 ├── cli/                   # CLI interface code
 │   ├── commands/          # Command implementations
 │   ├── utils/             # Utilities
