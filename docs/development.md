@@ -33,6 +33,12 @@ This guide provides information for developers who want to contribute to the AID
    ./scripts/setup_hooks.sh
    ```
 
+4. Enable command autocompletion (optional but recommended):
+   ```bash
+   # Install completion for development
+   ./scripts/install_completion.sh
+   ```
+
 ## Project Structure
 
 ```
@@ -57,7 +63,23 @@ aidev/
 ├── tests/                 # Test suite
 ├── docs/                  # Documentation
 └── scripts/               # Helper scripts
+    ├── clean_install.sh            # Clean installation script
+    ├── setup_hooks.sh              # Pre-commit hooks setup
+    ├── install_completion.sh       # Command completion installer
+    └── publish.py                  # PyPI publishing script
 ```
+
+## Command Autocompletion
+
+Command autocompletion is implemented using Typer's built-in completion support. The main components are:
+
+1. **Typer Configuration**: The main app in `cli/main.py` has `add_completion=True` to enable completion support.
+
+2. **Installation Command**: The `install-completion` command in `cli/main.py` handles installing completion for different shells.
+
+3. **Installation Script**: `scripts/install_completion.sh` provides a user-friendly way to install completion during development.
+
+When working on the CLI, you should test that your changes maintain compatibility with the autocompletion system.
 
 ## Pre-commit Hooks
 
@@ -209,6 +231,10 @@ pytest -v
 
 # Check a specific command
 python -m cli.main terminal suggest "find large files"
+
+# Test command completion
+python -m cli.main --help
+python -m cli.main install-completion --help
 ```
 
 ## Troubleshooting
@@ -217,3 +243,4 @@ python -m cli.main terminal suggest "find large files"
 - **Pre-commit hook failures:** Run `pre-commit run --all-files` to see detailed error messages
 - **Type checking errors:** Ensure all functions have proper return type annotations
 - **Dependency issues:** Try using the clean install script (`./scripts/clean_install.sh`)
+- **Completion issues:** If completion doesn't work, run `aidev install-completion --force` to reinstall it

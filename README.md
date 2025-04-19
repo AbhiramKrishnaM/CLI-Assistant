@@ -9,6 +9,7 @@ An AI-powered command-line assistant for developers that provides code generatio
 - **Documentation Search**: Search and summarize documentation locally
 - **Git Assistance**: Generate commit messages and PR descriptions
 - **API Testing**: Test and format API requests easily
+- **Command Autocompletion**: Tab completion for all commands and options
 
 ## Architecture
 
@@ -89,6 +90,47 @@ If you encounter dependency issues, use our clean install script:
 ```
 
 This script creates a fresh virtual environment and installs minimal dependencies directly from pyproject.toml.
+
+### Command Autocompletion
+
+For an improved CLI experience, you can enable command autocompletion which provides tab completion for all commands and options.
+
+#### Automatic Installation
+
+Run the provided installation script:
+
+```bash
+./scripts/install_completion.sh
+```
+
+This script will detect your shell (bash, zsh, or fish) and install the appropriate completion script.
+
+#### Manual Installation
+
+You can also install completion manually:
+
+```bash
+# Install completion for your current shell
+aidev install-completion
+
+# Or specify a shell
+aidev install-completion --shell bash
+aidev install-completion --shell zsh
+aidev install-completion --shell fish
+```
+
+After installation, restart your shell or source the appropriate file to enable completion:
+
+```bash
+# For bash
+source ~/.bash_completion
+
+# For zsh
+source ~/.zshrc
+
+# For fish
+source ~/.config/fish/completions/aidev.fish
+```
 
 ## Usage
 
