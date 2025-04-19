@@ -24,12 +24,12 @@ class OllamaDeepSeekModel(BaseAIModel):
     @property
     def model_name(self) -> str:
         """The name of the model."""
-        return "deepseek-r1: 7b"
+        return "deepseek-r1:7b"
 
     @classmethod
     def get_ollama_url(cls) -> str:
         """Get the Ollama API URL from configuration."""
-        result = get_config_value("ollama.url", "http: //localhost: 11434/api")
+        result = get_config_value("ollama.url", "http://localhost:11434/api")
         return str(result)
 
     @classmethod
@@ -46,7 +46,7 @@ class OllamaDeepSeekModel(BaseAIModel):
             if response.status_code == 200:
                 data = response.json()
                 available_models = [model["name"] for model in data.get("models", [])]
-                return "deepseek-r1: 7b" in available_models
+                return "deepseek-r1:7b" in available_models
             return False
         except Exception:
             return False

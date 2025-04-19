@@ -7,7 +7,7 @@ from .ollama_deepseek_r1_7b import OllamaDeepSeekModel
 
 # Register all available model classes
 MODEL_CLASSES: Dict[str, Type[BaseAIModel]] = {
-    "deepseek-r1: 7b": OllamaDeepSeekModel,
+    "deepseek-r1:7b": OllamaDeepSeekModel,
 }
 
 

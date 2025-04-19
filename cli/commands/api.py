@@ -14,7 +14,7 @@ from cli.utils.api import api_request, get_available_local_models
 from cli.utils.config import get_config_value, set_config_value
 from cli.utils.formatting import print_error, print_info, print_json, print_success
 
-app = typer.Typer(help="Test and format API requests")
+app = typer.Typer(help="Test and configure Ollama model settings")
 
 # Directory to store saved requests
 REQUESTS_DIR = os.path.expanduser("~/.aidev/requests")
@@ -25,56 +25,47 @@ OLLAMA_AVAILABLE = OllamaDeepSeekModel.is_available()
 
 @app.command()
 def request(
-    endpoint: str = typer.Argument(..., help="API endpoint to request"),
-    method: str = typer.Option("GET", "--method", "-m", help="HTTP method to use"),
-    data: Optional[str] = typer.Option(None, "--data", "-d", help="JSON data payload"),
-    query: Optional[str] = typer.Option(
-        None, "--query", "-q", help="URL query parameters as JSON"
-    ),
-    use_local: bool = typer.Option(
-        False, "--local", "-l", help="Use local Ollama model (only for text generation)"
-    ),
+    prompt: str = typer.Argument(..., help="Text prompt to send to Ollama"),
     model: str = typer.Option(
-        None, "--model", help="Model to use for local generation"
+        "deepseek-r1:7b", "--model", "-m", help="Ollama model to use"
+    ),
+    temperature: float = typer.Option(
+        0.7, "--temperature", "-t", help="Temperature for generation (0.0-1.0)"
+    ),
+    no_stream: bool = typer.Option(
+        False, "--no-stream", help="Disable streaming for local models"
     ),
 ) -> None:
-    """Make a direct request to the API."""
-    print(f"Making {method} request to {endpoint}")
+    """Make a direct request to Ollama for text generation."""
+    if not OLLAMA_AVAILABLE:
+        print_error("Ollama is not available. Make sure it's installed and running.")
+        print_info("Install instructions: https://github.com/ollama/ollama")
+        return
 
-    # Parse data and query if provided
-    data_dict = None
-    if data:
-        try:
-            data_dict = json.loads(data)
-        except json.JSONDecodeError:
-            print_error("Invalid JSON in data payload")
-            return
-
-    query_dict = None
-    if query:
-        try:
-            query_dict = json.loads(query)
-        except json.JSONDecodeError:
-            print_error("Invalid JSON in query parameters")
-            return
+    print(f"Generating text with model {model} (Temperature: {temperature})")
 
     # Make the request
     response = api_request(
-        endpoint=endpoint,
-        method=method,
-        data=data_dict,
-        params=query_dict,
-        use_local_model=use_local,
+        endpoint="/text/generate",
+        method="POST",
+        data={
+            "prompt": prompt,
+            "temperature": temperature,
+            "stream": not no_stream,
+        },
+        loading_message=f"Generating text with {model}...",
+        use_local_model=True,
         local_model_name=model,
     )
 
     # Display the response
     if "error" in response:
         print_error("Request failed")
-        print(response.get("message", "Unknown error"))
+        print_error(response.get("message", "Unknown error"))
     else:
         print_success("Request successful")
-        print_json(response, "Response")
+        if no_stream:
+            print_json(response, "Response")
 
 
 @app.command()
@@ -89,11 +80,8 @@ def config(
     set_ollama_timeout: Optional[int] = typer.Option(
         None, "--set-ollama-timeout", help="Set the Ollama API timeout"
     ),
-    toggle_ollama: Optional[bool] = typer.Option(
-        None, "--ollama-enabled", help="Enable or disable Ollama integration"
-    ),
 ) -> None:
-    """Configure API settings including Ollama integration."""
+    """Configure Ollama API settings."""
     changes_made = False
 
     # Apply any changes
@@ -112,32 +100,16 @@ def config(
         print_success(f"Set Ollama timeout to: {set_ollama_timeout} seconds")
         changes_made = True
 
-    if toggle_ollama is not None:
-        set_config_value("ollama.enabled", toggle_ollama)
-        print_success(
-            f"{'Enabled' if toggle_ollama else 'Disabled'} Ollama integration"
-        )
-        changes_made = True
-
     # Show configuration
-    table = Table(title="API Configuration")
+    table = Table(title="Ollama Configuration")
     table.add_column("Setting", style="cyan")
     table.add_column("Value", style="green")
 
-    # API settings
-    backend_url = get_config_value("backend.url")
-    backend_timeout = get_config_value("backend.timeout")
-
-    table.add_row("Backend URL", backend_url)
-    table.add_row("Backend Timeout", str(backend_timeout) + " seconds")
-
     # Ollama settings
-    ollama_enabled = get_config_value("ollama.enabled", True)
-    ollama_url = get_config_value("ollama.url", "http: //localhost: 11434/api")
-    ollama_model = get_config_value("ollama.default_model", "deepseek-r1: 7b")
+    ollama_url = get_config_value("ollama.url", "http://localhost:11434/api")
+    ollama_model = get_config_value("ollama.default_model", "deepseek-r1:7b")
     ollama_timeout = get_config_value("ollama.timeout", 60)
 
-    table.add_row("Ollama Enabled", "✅ Yes" if ollama_enabled else "❌ No")
     table.add_row("Ollama API URL", ollama_url)
     table.add_row("Default Ollama Model", ollama_model)
     table.add_row("Ollama Timeout", str(ollama_timeout) + " seconds")
@@ -157,21 +129,21 @@ def config(
 
     if not changes_made:
         print_info(
-            "To update settings, use the options like --set-ollama-url or --ollama-enabled"
+            "To update settings, use the options like --set-ollama-url or --set-ollama-model"
         )
-        if not OLLAMA_AVAILABLE and ollama_enabled:
+        if not OLLAMA_AVAILABLE:
             print_info(
-                "Ollama is enabled in config but not available. Make sure Ollama is installed and running."
+                "Ollama is not available. Make sure Ollama is installed and running."
             )
-            print_info("Install instructions: https: //github.com/ollama/ollama")
+            print_info("Install instructions: https://github.com/ollama/ollama")
 
 
 @app.command()
-def ollama_models() -> None:
+def models() -> None:
     """List available models from Ollama."""
     if not OLLAMA_AVAILABLE:
         print_error("Ollama is not available. Make sure it's installed and running.")
-        print_info("Install instructions: https: //github.com/ollama/ollama")
+        print_info("Install instructions: https://github.com/ollama/ollama")
         return
 
     models = get_available_local_models()
@@ -179,7 +151,7 @@ def ollama_models() -> None:
     if not models:
         print_info("No models found in Ollama.")
         print_info("You can pull models with: ollama pull <model-name>")
-        print_info("Example: ollama pull deepseek-r1: 7b")
+        print_info("Example: ollama pull deepseek-r1:7b")
         return
 
     table = Table(title="Available Ollama Models")
@@ -190,7 +162,7 @@ def ollama_models() -> None:
 
     print(table)
 
-    default_model = get_config_value("ollama.default_model", "deepseek-r1: 7b")
+    default_model = get_config_value("ollama.default_model", "deepseek-r1:7b")
     if default_model in models:
         print_success(f"Default model is set to: {default_model}")
     else:
@@ -270,14 +242,10 @@ def load(
         if execute:
             typer.echo("\nExecuting request...")
             request(
-                endpoint=request_data.get("url", ""),
-                method=request_data.get("method", "GET"),
-                data=json.dumps(data) if data else None,
-                query=(
-                    json.dumps(request_data.get("query", {}))
-                    if request_data.get("query")
-                    else None
-                ),
+                prompt=data.get("prompt", ""),
+                model=data.get("model", "deepseek-r1:7b"),
+                temperature=data.get("temperature", 0.7),
+                no_stream=data.get("stream", False),
             )
 
     except (json.JSONDecodeError, IOError) as e:

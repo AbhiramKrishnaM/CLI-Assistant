@@ -9,7 +9,7 @@ from .base_model import BaseAIModel
 
 def get_default_model_name() -> str:
     """Get the default model name from configuration."""
-    result = get_config_value("ai.default_model", "deepseek-r1: 7b")
+    result = get_config_value("ai.default_model", "deepseek-r1:7b")
     return cast(str, result)  # Cast to str to satisfy mypy
 
 

@@ -26,11 +26,8 @@ def generate(
     max_length: Optional[int] = typer.Option(
         None, "--max-length", "-l", help="Maximum length of generated code"
     ),
-    use_local: bool = typer.Option(
-        True, "--local/--api", help="Use local AI model instead of API backend"
-    ),
     model: str = typer.Option(
-        "deepseek-r1: 7b", "--model", "-m", help="Specify which local model to use"
+        "deepseek-r1:7b", "--model", "-m", help="Specify which local model to use"
     ),
     no_stream: bool = typer.Option(
         False, "--no-stream", help="Disable streaming for local models"
@@ -44,21 +41,23 @@ def generate(
     """Generate code based on a natural language description."""
     print(f"Generating {language} code for: {description}")
 
-    if use_local:
-        local_models = get_available_local_models()
-        if not local_models:
-            print_warning("No local models available. Falling back to API backend.")
-            use_local = False
-        elif model not in local_models:
-            print_warning(
-                f"Model '{model}' not found. Available models: {', '.join(local_models)}"
-            )
-            if "deepseek-r1: 7b" in local_models:
-                model = "deepseek-r1: 7b"
-                print_info("Using deepseek-r1: 7b instead.")
-            else:
-                model = local_models[0]
-                print_info(f"Using {model} instead.")
+    # Check for available models
+    local_models = get_available_local_models()
+    if not local_models:
+        print_error("No local models available. Please install an Ollama model first.")
+        print_info("Try running: ollama pull deepseek-r1:7b")
+        return
+
+    if model not in local_models:
+        print_warning(
+            f"Model '{model}' not found. Available models: {', '.join(local_models)}"
+        )
+        if "deepseek-r1:7b" in local_models:
+            model = "deepseek-r1:7b"
+            print_info("Using deepseek-r1:7b instead.")
+        else:
+            model = local_models[0]
+            print_info(f"Using {model} instead.")
 
     # Request code generation
     response = api_request(
@@ -73,43 +72,43 @@ def generate(
             "show_thinking": show_thinking,
         },
         loading_message=f"Generating {language} code with {model}...",
-        use_local_model=use_local,
+        use_local_model=True,
         local_model_name=model,
     )
 
     # Extract the code from response
     if "error" in response:
         print_error("Failed to generate code.")
-        # Fallback to mock implementation
-        code = f"# Generated {language} code based on: {description}\n\n# TODO: Implement AI model integration\n"
-    else:
-        code = response.get(
-            "code", response.get("text", "# Error: No code was generated")
-        ).strip()
+        print_error(response.get("message", "Unknown error"))
+        return
 
-        # For streaming mode, we need to handle the final output and thinking differently
-        if not no_stream and use_local:
-            print("\n")  # Add extra newline for separation
-            print_success(
-                f"Code generation completed with {response.get('model_used', model)}."
-            )
+    code = response.get(
+        "code", response.get("text", "# Error: No code was generated")
+    ).strip()
 
-            # If there are thinking sections in non-streaming mode
-            if (
-                no_stream
-                and "thinking" in response
-                and response["thinking"]
-                and show_thinking
-            ):
-                print_info("Model reasoning (click to expand):")
-                for i, thinking in enumerate(response["thinking"], 1):
-                    panel = Panel(
-                        thinking.strip(),
-                        title=f"[bold]Thinking Process #{i}[/bold]",
-                        subtitle="[dim][click to collapse][/dim]",
-                        border_style="blue",
-                    )
-                    print(panel)
+    # For streaming mode, we need to handle the final output and thinking differently
+    if not no_stream:
+        print("\n")  # Add extra newline for separation
+        print_success(
+            f"Code generation completed with {response.get('model_used', model)}."
+        )
+
+        # If there are thinking sections in non-streaming mode
+        if (
+            no_stream
+            and "thinking" in response
+            and response["thinking"]
+            and show_thinking
+        ):
+            print_info("Model reasoning (click to expand):")
+            for i, thinking in enumerate(response["thinking"], 1):
+                panel = Panel(
+                    thinking.strip(),
+                    title=f"[bold]Thinking Process #{i}[/bold]",
+                    subtitle="[dim][click to collapse][/dim]",
+                    border_style="blue",
+                )
+                print(panel)
 
     # Output handling
     if output:
@@ -119,7 +118,7 @@ def generate(
     else:
         # Only print the syntax-highlighted code if we're not in streaming mode
         # (for streaming, the code is already printed in real-time)
-        if not (use_local and not no_stream):
+        if not (not no_stream):
             print("\n[bold green]Generated Code: [/bold green]")
             # Use the rich Syntax class for syntax highlighting
             try:
@@ -145,11 +144,8 @@ def explain(
         "-d",
         help="Explanation detail level (brief, medium, detailed)",
     ),
-    use_local: bool = typer.Option(
-        True, "--local/--api", help="Use local AI model instead of API backend"
-    ),
     model: str = typer.Option(
-        "deepseek-r1: 7b", "--model", "-m", help="Specify which local model to use"
+        "deepseek-r1:7b", "--model", "-m", help="Specify which local model to use"
     ),
     no_stream: bool = typer.Option(
         False, "--no-stream", help="Disable streaming for local models"
@@ -173,21 +169,24 @@ def explain(
         print(f"Explaining code from {file_path}:")
 
         # Check for available models
-        if use_local:
-            local_models = get_available_local_models()
-            if not local_models:
-                print_warning("No local models available. Falling back to API backend.")
-                use_local = False
-            elif model not in local_models:
-                print_warning(
-                    f"Model '{model}' not found. Available models: {', '.join(local_models)}"
-                )
-                if "deepseek-r1: 7b" in local_models:
-                    model = "deepseek-r1: 7b"
-                    print_info("Using deepseek-r1: 7b instead.")
-                else:
-                    model = local_models[0]
-                    print_info(f"Using {model} instead.")
+        local_models = get_available_local_models()
+        if not local_models:
+            print_error(
+                "No local models available. Please install an Ollama model first."
+            )
+            print_info("Try running: ollama pull deepseek-r1:7b")
+            return
+
+        if model not in local_models:
+            print_warning(
+                f"Model '{model}' not found. Available models: {', '.join(local_models)}"
+            )
+            if "deepseek-r1:7b" in local_models:
+                model = "deepseek-r1:7b"
+                print_info("Using deepseek-r1:7b instead.")
+            else:
+                model = local_models[0]
+                print_info(f"Using {model} instead.")
 
         # Infer language if not specified
         if not language:
@@ -239,55 +238,44 @@ def explain(
                 "show_thinking": show_thinking,
             },
             loading_message=f"Analyzing code with {model}...",
-            use_local_model=use_local,
+            use_local_model=True,
             local_model_name=model,
         )
 
         if "error" in response:
             print_error("Failed to explain code.")
-            print(f"Error: {response.get('message', 'Unknown error')}")
+            print_error(response.get("message", "Unknown error"))
             return
 
-        # Print explanation
-        if not no_stream and use_local:
-            # For streaming mode, the explanation has already been printed in real-time
-            print("\n")  # Add extra newline for separation
-            print_success(
-                f"Explanation completed with {response.get('model_used', model)}."
-            )
+        # Print the explanation
+        explanation = response.get("text", "Error: No explanation generated").strip()
 
-            # If there are thinking sections in non-streaming mode
-            if (
-                no_stream
-                and "thinking" in response
-                and response["thinking"]
-                and show_thinking
-            ):
-                print_info("Model reasoning (click to expand):")
-                for i, thinking in enumerate(response["thinking"], 1):
-                    panel = Panel(
-                        thinking.strip(),
-                        title=f"[bold]Thinking Process #{i}[/bold]",
-                        subtitle="[dim][click to collapse][/dim]",
-                        border_style="blue",
-                    )
-                    print(panel)
-        else:
-            # For non-streaming mode, get explanation from response
-            explanation = response.get(
-                "explanation",
-                response.get("text", "Error: No explanation was generated"),
-            )
+        if no_stream:
             print("\n[bold green]Explanation: [/bold green]")
             print(explanation)
 
-            # Show model used
-            print_info(f"Explanation provided by: {response.get('model_used', model)}")
+        print("\n")  # Add extra newline for separation
+        print_success(f"Code explanation completed with {model}.")
 
     except FileNotFoundError:
         print_error(f"File not found: {file_path}")
     except Exception as e:
-        print_error(f"Error: {str(e)}")
+        print_error(f"Error explaining code: {str(e)}")
 
 
-# Add more code-related commands as needed
+@app.command()
+def models() -> None:
+    """List available code models."""
+    models = get_available_local_models()
+
+    if not models:
+        print_error("No local models available.")
+        print_info("Try running: ollama pull deepseek-r1:7b")
+        return
+
+    print("[bold]Available local models:[/bold]")
+    for i, model in enumerate(models, 1):
+        print(f"{i}. {model}")
+
+    print("\n[bold green]To use a specific model:[/bold green]")
+    print('aidev code generate --model MODEL_NAME "your description here"')

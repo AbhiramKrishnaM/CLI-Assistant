@@ -20,7 +20,7 @@ This CLI tool uses a standalone architecture that connects directly to Ollama mo
 3. **User-friendly**: Simple command-line interface with streaming output
 4. **Extensible**: Easy to add new model implementations
 
-The tool uses a pluggable model architecture that makes it easy to add support for additional AI models in the future.
+The tool uses a pluggable model architecture that makes it easy to add support for additional Ollama models in the future.
 
 ## Installation
 
@@ -196,17 +196,17 @@ aidev docs summarize README.md
 ### API Testing
 
 ```bash
-# Make a simple GET request
-aidev api request https://jsonplaceholder.typicode.com/posts/1
+# Generate text with an Ollama model
+aidev api request "Explain how DNS works"
 
-# Make a POST request with data
-aidev api request https://jsonplaceholder.typicode.com/posts --method POST --data '{"title":"foo","body":"bar","userId":1}'
+# Generate text with a specific model
+aidev api request "Summarize quantum computing" --model llama2:7b
 
-# Configure API settings
+# Configure Ollama API settings
 aidev api config --set-ollama-url "http://localhost:11434/api"
 
 # List available Ollama models
-aidev api ollama-models
+aidev api models
 ```
 
 ## Working with Ollama Models
@@ -230,7 +230,7 @@ For complete Ollama setup and more details, see [docs/ollama.md](docs/ollama.md)
 
 ### Model Configuration
 
-You can configure default models and API settings:
+You can configure Ollama settings:
 
 ```bash
 # Configure the default model
