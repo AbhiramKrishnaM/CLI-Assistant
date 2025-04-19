@@ -277,6 +277,9 @@ aidev/
 ├── tests/                 # Test suite
 ├── docs/                  # Documentation
 └── scripts/               # Helper scripts
+    ├── format_code.sh     # Formats code with black and isort
+    ├── clean_install.sh   # Creates a fresh virtual environment and installation
+    └── install_completion.sh # Sets up shell autocompletion
 ```
 
 ### Code Formatting and Linting

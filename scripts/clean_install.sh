@@ -66,8 +66,30 @@ if [ -f .pre-commit-config.yaml ]; then
     echo -e "${GREEN}Pre-commit hooks installed.${NC}"
     echo -e "${YELLOW}Running initial pre-commit check...${NC}"
     pre-commit run --all-files || true
+
+    echo -e "${GREEN}The following checks will run on commit:${NC}"
+    echo -e "  - Trailing whitespace removal"
+    echo -e "  - End of file fixer"
+    echo -e "  - YAML syntax checking"
+    echo -e "  - Black (code formatting)"
+    echo -e "  - isort (import sorting)"
+    echo -e "  - flake8 (linting)"
+    echo -e "  - mypy (type checking)"
 else
     echo -e "${YELLOW}No .pre-commit-config.yaml found. Skipping pre-commit setup.${NC}"
+fi
+
+# Install tab completion
+echo -e "${YELLOW}Setting up tab completion...${NC}"
+if command -v aidev &> /dev/null; then
+    # Detect shell
+    CURRENT_SHELL=$(basename "$SHELL")
+    if [[ "$CURRENT_SHELL" == "bash" || "$CURRENT_SHELL" == "zsh" || "$CURRENT_SHELL" == "fish" ]]; then
+        echo -e "${YELLOW}Installing completion for $CURRENT_SHELL...${NC}"
+        aidev install-completion --shell "$CURRENT_SHELL" --force
+    else
+        echo -e "${YELLOW}Unsupported shell: $CURRENT_SHELL. Skipping completion setup.${NC}"
+    fi
 fi
 
 # Verify installation
