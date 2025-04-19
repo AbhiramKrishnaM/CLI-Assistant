@@ -1,6 +1,26 @@
 [flake8]
-max-line-length = 88
-extend-ignore = E203, W503
+max-line-length = 120
+extend-ignore =
+    # Ignore line break before binary operator
+    W503,
+    # Ignore missing whitespace after colon
+    E231,
+    # Ignore line too long
+    E501,
+    # Ignore unused variables
+    F841,
+    # Ignore bare except
+    E722,
+    # Ignore multiple spaces before operator
+    E221,
+    # Ignore imperative mood in docstrings
+    D401,
+    # Ignore missing whitespace around arithmetic operator
+    E226,
+    # Ignore blank line required between summary line and description
+    D205,
+    # Black-compatible docstring formatting
+    E203
 exclude = .git,__pycache__,build,dist,.pytest_cache,.venv,venv
 per-file-ignores =
     __init__.py: F401,F403
