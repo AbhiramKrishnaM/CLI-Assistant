@@ -1,6 +1,6 @@
 # Development Guide
 
-This guide provides information for developers who want to contribute to the aidev project.
+This guide provides information for developers who want to contribute to the AIDEV project.
 
 ## Setting Up the Development Environment
 
@@ -15,19 +15,53 @@ This guide provides information for developers who want to contribute to the aid
    ./scripts/clean_install.sh
    ```
 
-This will create a virtual environment, install all dependencies, and set up pre-commit hooks.
+   This will create a virtual environment, install all dependencies, and set up pre-commit hooks.
+
+3. Alternatively, set up manually:
+   ```bash
+   # Create and activate virtual environment
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+   # Install dependencies
+   pip install -r requirements.txt
+
+   # Install in development mode
+   pip install -e .
+
+   # Set up pre-commit hooks
+   ./scripts/setup_hooks.sh
+   ```
+
+## Project Structure
+
+```
+aidev/
+├── cli/                   # CLI interface code
+│   ├── commands/          # Command implementations
+│   │   ├── api.py         # API testing commands
+│   │   ├── code.py        # Code generation commands
+│   │   ├── docs.py        # Documentation commands
+│   │   ├── git.py         # Git assistance commands
+│   │   └── terminal.py    # Terminal command help
+│   ├── utils/             # Utilities
+│   │   ├── api.py         # API client utilities
+│   │   ├── config.py      # Configuration management
+│   │   └── formatting.py  # Output formatting
+│   ├── ai_agent_models/   # AI model implementations
+│   │   ├── base_model.py            # Base abstract class for models
+│   │   ├── ollama_deepseek_r1_7b.py # Ollama model implementation
+│   │   ├── model_factory.py         # Model instantiation factory
+│   │   └── __init__.py              # Model registration
+│   └── main.py            # Entry point
+├── tests/                 # Test suite
+├── docs/                  # Documentation
+└── scripts/               # Helper scripts
+```
 
 ## Pre-commit Hooks
 
-We use pre-commit hooks to ensure code quality and consistency. These hooks run automatically when you commit changes, checking your code before it's committed.
-
-### Installing Pre-commit Hooks
-
-If you didn't use the clean installation script, you can set up the pre-commit hooks manually:
-
-```bash
-./scripts/setup_hooks.sh
-```
+We use pre-commit hooks to ensure code quality and consistency. These hooks run automatically when you commit changes.
 
 ### Available Hooks
 
@@ -35,7 +69,7 @@ Our pre-commit configuration includes:
 
 1. **Code Formatting**
    - **black**: Formats Python code according to the Black code style
-   - **isort**: Sorts imports according to the PEP8 style guide, compatible with Black
+   - **isort**: Sorts imports according to the PEP8 style guide
 
 2. **Code Quality**
    - **flake8**: Checks for PEP8 compliance and common errors
@@ -45,13 +79,11 @@ Our pre-commit configuration includes:
    - Trailing whitespace removal
    - End of file fixing
    - YAML/TOML syntax checking
-   - Large file checks
    - Debug statement checks
-   - Merge conflict detection
 
 ### Running Pre-commit Manually
 
-You can run the pre-commit checks manually without committing:
+You can run the pre-commit checks manually:
 
 ```bash
 # Run on all files
@@ -69,59 +101,119 @@ pre-commit run black --all-files
 We follow these coding standards:
 
 1. **Code Formatting**
-   - Line length: 88 characters
-   - Follow Black code style
-   - Properly sorted imports using isort
+   - Follow Black code style (88 character line length)
+   - Use isort for import sorting
    - Use f-strings for string formatting
 
 2. **Documentation**
    - All modules, classes, and functions should have docstrings
    - Use Google-style docstrings
-   - Keep docstrings clear and concise
+   - Keep documentation up-to-date with code changes
 
 3. **Type Annotations**
    - Use type annotations for all function parameters and return values
-   - Use Optional[] for optional parameters
-   - Use Union[] for multiple possible types
+   - Use `Optional[]` for optional parameters
+   - Use `Union[]` for multiple possible types
+   - Run mypy to check type consistency
 
 4. **Error Handling**
    - Use proper exception handling
-   - Create custom exceptions when appropriate
-   - Provide clear error messages
+   - Provide clear error messages to users
+   - Use the formatting utilities for consistent output
 
-5. **Testing**
-   - Write tests for all new features
-   - Maintain high test coverage
-   - Use pytest fixtures for common setup/teardown
+## Adding New Model Implementations
 
-## Submitting Changes
+To add a new LLM model:
 
-1. Create a new branch for your changes
-2. Make your changes and commit them (pre-commit hooks will run automatically)
-3. Push your branch to your fork
-4. Submit a pull request to the main repository
+1. Create a new model class in `cli/ai_agent_models/`:
+   ```python
+   from .base_model import BaseAIModel
 
-## Development Commands
+   class NewModel(BaseAIModel):
+       @property
+       def model_name(self) -> str:
+           return "new-model-name"
+
+       @classmethod
+       def is_available(cls) -> bool:
+           # Check if the model is available
+           ...
+
+       def generate_text(self, prompt: str, **kwargs) -> dict:
+           # Implement text generation
+           ...
+
+       # Implement other required methods
+   ```
+
+2. Register the model in `cli/ai_agent_models/__init__.py`:
+   ```python
+   from .new_model import NewModel
+
+   MODEL_CLASSES = {
+       "existing-model": ExistingModel,
+       "new-model-name": NewModel,
+   }
+   ```
+
+3. Test your implementation:
+   ```bash
+   # Run type checking
+   mypy cli/ai_agent_models/new_model.py
+
+   # Run unit tests
+   pytest -xvs tests/test_models.py
+   ```
+
+## Development Workflow
+
+1. Create a feature branch for your changes:
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+
+2. Make changes and run tests:
+   ```bash
+   # Format code
+   black .
+   isort .
+
+   # Run type checking
+   mypy cli
+
+   # Run tests
+   pytest
+   ```
+
+3. Commit your changes (pre-commit hooks will run automatically)
+
+4. Push your branch and create a pull request:
+   ```bash
+   git push origin feature/your-feature-name
+   ```
+
+## Common Development Tasks
 
 ```bash
-# Format code
-black .
-isort .
+# Run the CLI in development mode
+python -m cli.main hello
+
+# Format all code
+black . && isort .
 
 # Check types
 mypy cli
 
-# Run linting
-flake8
-
 # Run tests
 pytest -v
+
+# Check a specific command
+python -m cli.main terminal suggest "find large files"
 ```
 
-## Additional Resources
+## Troubleshooting
 
-- [Black Documentation](https://black.readthedocs.io/en/stable/)
-- [isort Documentation](https://pycqa.github.io/isort/)
-- [Flake8 Documentation](https://flake8.pycqa.org/en/latest/)
-- [MyPy Documentation](https://mypy.readthedocs.io/en/stable/)
-- [Pre-commit Documentation](https://pre-commit.com/)
+- **Import errors:** Make sure you've installed the package in development mode (`pip install -e .`)
+- **Pre-commit hook failures:** Run `pre-commit run --all-files` to see detailed error messages
+- **Type checking errors:** Ensure all functions have proper return type annotations
+- **Dependency issues:** Try using the clean install script (`./scripts/clean_install.sh`)

@@ -160,35 +160,16 @@ aidev api request https://jsonplaceholder.typicode.com/posts/1
 # Make a POST request with data
 aidev api request https://jsonplaceholder.typicode.com/posts --method POST --data '{"title":"foo","body":"bar","userId":1}'
 
-# Save a request for future use
-aidev api request https://jsonplaceholder.typicode.com/posts/1 --save my-request
+# Configure API settings
+aidev api config --set-ollama-url "http://localhost:11434/api"
 
-# List saved requests
-aidev api list-saved
-
-# Load and execute a saved request
-aidev api load my-request --execute
+# List available Ollama models
+aidev api ollama-models
 ```
 
-### Using Ollama Models
+## Working with Ollama Models
 
-All commands use Ollama models:
-
-```bash
-# Generate code
-aidev code generate "Create a Python function to calculate factorial"
-
-# Get terminal command suggestions
-aidev terminal suggest "find files modified in the last week"
-
-# Search documentation
-aidev docs search "async functions in javascript"
-
-# Generate commit message
-aidev git generate-commit
-```
-
-Model selection and options:
+All commands support Ollama models with various options:
 
 ```bash
 # Select a specific Ollama model
@@ -201,17 +182,42 @@ aidev code generate --no-stream "Create a binary search function"
 aidev terminal explain --no-thinking "grep -r pattern ."
 ```
 
-For Ollama setup and more details, see [docs/ollama.md](docs/ollama.md).
+For complete Ollama setup and more details, see [docs/ollama.md](docs/ollama.md).
 
-## Adding New Models
+## Advanced Usage
 
-The CLI tool has a modular architecture that makes it easy to add new AI models:
+### Model Configuration
 
-1. Create a new model implementation in `cli/ai_agent_models/`
-2. Register the model in `cli/ai_agent_models/__init__.py`
-3. Use the model by specifying it with the `--model` flag
+You can configure default models and API settings:
 
-For detailed instructions, see [cli/ai_agent_models/README.md](cli/ai_agent_models/README.md).
+```bash
+# Configure the default model
+aidev api config --set-ollama-model "deepseek-r1:7b"
+
+# Set the Ollama API timeout
+aidev api config --set-ollama-timeout 120
+
+# Show all current configuration
+aidev api config --all
+```
+
+### Streaming and Thinking Process
+
+Control the output format:
+
+```bash
+# Enable real-time streaming (default)
+aidev code generate "Create a function to calculate factorial"
+
+# Disable streaming for complete output at once
+aidev code generate --no-stream "Create a binary search function"
+
+# Show model reasoning (default)
+aidev git generate-commit --show-thinking
+
+# Hide model reasoning
+aidev git generate-commit --no-thinking
+```
 
 ## Development
 
@@ -226,12 +232,23 @@ aidev/
 │   │   ├── base_model.py  # Base abstract class for models
 │   │   └── ollama_*.py    # Model implementations
 │   └── main.py            # Entry point
-├── shared/                # Shared model definitions
 ├── tests/                 # Test suite
-│   ├── conftest.py        # Pytest fixtures
-│   ├── test_cli.py        # CLI interface tests
-│   └── test_models.py     # Model integration tests
 ├── docs/                  # Documentation
-│   └── ollama.md          # Ollama setup guide
-└── requirements.txt       # Project dependencies
+└── scripts/               # Helper scripts
 ```
+
+### Contributing
+
+Interested in contributing? Check out our [Development Guide](docs/development.md) for details on:
+
+- Setting up a development environment
+- Code style and standards
+- Running tests
+- Creating model implementations
+- Submitting pull requests
+
+## Documentation
+
+- [Development Guide](docs/development.md) - Guide for contributors
+- [Ollama Integration](docs/ollama.md) - Detailed guide on using Ollama models
+- [PyPI Distribution](docs/pypi_distribution.md) - Information on packaging and publishing

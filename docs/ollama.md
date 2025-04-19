@@ -1,112 +1,165 @@
-# Ollama Integration
+# Ollama Integration Guide
 
-The CLI tool uses Ollama models for all commands, providing a privacy-focused, offline AI experience.
+This guide explains how to set up and use Ollama models with AIDEV.
+
+## What is Ollama?
+
+[Ollama](https://ollama.ai) is an open-source tool that allows you to run large language models (LLMs) locally on your machine. It provides a simple API for running models like DeepSeek, Llama, and Mistral without requiring a cloud service.
 
 ## Setup
 
-1. Install Ollama from [ollama.ai](https://ollama.ai)
-2. Pull a model: `ollama pull deepseek-r1:7b` (recommended)
-3. Ensure Ollama is running before using the CLI
+### 1. Install Ollama
 
-## Using Ollama with CLI Commands
+Download and install Ollama from [ollama.ai](https://ollama.ai).
 
-All commands use Ollama models by default:
-
+**Mac**:
 ```bash
-# General format
-aidev [command] [subcommand] [options] "your prompt"
+brew install ollama
 ```
 
-### Supported Commands
-
-All commands use Ollama models:
-
-#### Terminal Commands
+**Linux**:
 ```bash
-# Generate terminal command suggestions
-aidev terminal suggest "find large files on my system"
-
-# Explain a terminal command
-aidev terminal explain "find / -type f -size +100M"
+curl https://ollama.ai/install.sh | sh
 ```
 
-#### Code Commands
+**Windows**:
+Download the installer from the [Ollama website](https://ollama.ai).
+
+### 2. Start Ollama
+
+Once installed, start the Ollama service:
+
+```bash
+ollama serve
+```
+
+This runs Ollama in the background and exposes its API on port 11434.
+
+### 3. Pull a Model
+
+Pull at least one model to use with AIDEV:
+
+```bash
+# Recommended model
+ollama pull deepseek-r1:7b
+
+# Alternative models
+ollama pull llama2:7b
+ollama pull mistral:7b
+```
+
+The first pull operation will download the model files, which may take some time depending on your internet connection and the model size.
+
+## Using Ollama with AIDEV
+
+### Basic Usage
+
+All AIDEV commands automatically use Ollama models:
+
 ```bash
 # Generate code
-aidev code generate --language python "function to calculate fibonacci sequence"
+aidev code generate "Create a function to calculate prime numbers in Python"
 
-# Explain code
-aidev code explain path/to/file.py --line-range 10-20
-```
+# Get terminal command suggestions
+aidev terminal suggest "find all PDF files modified in the last week"
 
-#### Git Commands
-```bash
-# Generate commit message
+# Generate a git commit message
 aidev git generate-commit
-
-# Generate PR description
-aidev git pr-description
 ```
-
-#### Documentation Commands
-```bash
-# Search documentation
-aidev docs search "async functions in javascript"
-
-# Summarize documentation
-aidev docs summarize path/to/documentation.md --length medium
-```
-
-## Advanced Options
-
-Each command supports these additional options:
 
 ### Model Selection
 
-Specify which model to use:
+Specify a particular model with the `--model` flag:
 
 ```bash
-aidev terminal suggest --model "llama2:7b" "find files modified in last 24 hours"
+# Use a specific model
+aidev code generate --model "mistral:7b" "Write a recursive function to calculate factorial"
+
+# Use the default model
+aidev terminal suggest "find large files on my system"
 ```
 
-Available models depend on what you've downloaded with Ollama.
+### Streaming Options
 
-### Real-time Streaming
-
-By default, all commands show results in real-time as they're generated:
+Control the streaming behavior:
 
 ```bash
-# Disable streaming if preferred
-aidev terminal suggest --no-stream "find large files"
+# Enable streaming (default) - shows results as they're generated
+aidev docs search "javascript promises"
+
+# Disable streaming - shows complete response when finished
+aidev docs search --no-stream "javascript promises"
 ```
 
-### Model Thinking Process
+### Thinking Process
 
-Commands can show or hide the model's reasoning process:
+View or hide the model's reasoning:
 
 ```bash
-# Show model thinking (default)
-aidev terminal suggest --show-thinking "how to find large files on my system"
+# Show thinking (default) - displays reasoning in collapsible panels
+aidev git generate-commit --show-thinking
 
-# Hide model thinking
-aidev terminal suggest --no-thinking "how to find large files on my system"
+# Hide thinking - only shows the final output
+aidev git generate-commit --no-thinking
 ```
 
-When showing thinking is enabled, the model's thought process will be displayed in expandable panels.
+## Command Reference
 
-## Checking Available Models
+### Code Commands
 
-You can check what models you have locally:
+```bash
+# Generate code with a specific language
+aidev code generate "Sort an array of integers" --language javascript
 
+# Explain existing code
+aidev code explain path/to/code.py --lines 10-20
 ```
-aidev terminal models
+
+### Terminal Commands
+
+```bash
+# Get command suggestions
+aidev terminal suggest "compress a directory into a tar.gz file"
+
+# Explain a command
+aidev terminal explain "find . -type f -name '*.log' -mtime +30 -delete"
 ```
 
-This command will show available models and the current default model.
+### Git Commands
+
+```bash
+# Generate a commit message based on changes
+aidev git generate-commit
+
+# Create a PR description from commits
+aidev git pr-description
+```
+
+### Documentation Commands
+
+```bash
+# Search for documentation
+aidev docs search "async functions" --language javascript --max 10
+
+# Summarize a document
+aidev docs summarize README.md --length medium
+```
+
+### API Commands
+
+```bash
+# Check available models
+aidev api ollama-models
+
+# Configure Ollama settings
+aidev api config --set-ollama-model "deepseek-r1:7b"
+aidev api config --set-ollama-url "http://localhost:11434/api"
+aidev api config --set-ollama-timeout 120
+```
 
 ## Configuration
 
-You can configure Ollama settings in the configuration file. Default values:
+AIDEV uses these default Ollama settings:
 
 ```
 [ai]
@@ -114,34 +167,94 @@ default_model = "deepseek-r1:7b"
 
 [ollama]
 url = "http://localhost:11434/api"
-timeout = 60
+timeout = 60  # seconds
+enabled = true
+```
+
+You can modify these settings using the `api config` command:
+
+```bash
+# Show current configuration
+aidev api config
+
+# Set a different default model
+aidev api config --set-ollama-model "mistral:7b"
+
+# Change Ollama API URL (if running on a different machine)
+aidev api config --set-ollama-url "http://192.168.1.100:11434/api"
 ```
 
 ## Troubleshooting
 
-If you're having issues with Ollama:
+### Common Issues
 
-1. Ensure Ollama is installed and running:
-   ```
-   ollama list
+#### "Model not found" error
+
+```
+Model 'deepseek-r1:7b' not found
+```
+
+**Solution**: Pull the model with Ollama:
+```bash
+ollama pull deepseek-r1:7b
+```
+
+#### "Connection refused" error
+
+```
+Failed to connect to Ollama: Connection refused
+```
+
+**Solutions**:
+1. Ensure Ollama is running:
+   ```bash
+   ollama serve
    ```
 
-2. Check if the model is available:
-   ```
-   ollama list
-   ```
-
-3. Pull the model if it's not available:
-   ```
-   ollama pull deepseek-r1:7b
-   ```
-
-4. Verify the Ollama API is accessible:
-   ```
+2. Check if the Ollama API is accessible:
+   ```bash
    curl http://localhost:11434/api/tags
    ```
 
-5. Test a simple generation:
+3. Verify your firewall isn't blocking connections to port 11434
+
+#### Slow response times
+
+**Solutions**:
+1. Use a smaller model (e.g., deepseek-r1:7b instead of llama2:70b)
+2. Increase the timeout:
+   ```bash
+   aidev api config --set-ollama-timeout 180
    ```
-   ollama run deepseek-r1:7b "Hello, how are you?"
-   ```
+
+### Diagnostic Commands
+
+```bash
+# Check if Ollama is running and available
+aidev api config
+
+# List available models
+aidev api ollama-models
+
+# Check Ollama directly
+ollama list
+```
+
+### Resetting Ollama
+
+If you're having persistent issues with Ollama:
+
+```bash
+# Stop the Ollama service
+killall ollama
+
+# Start Ollama again
+ollama serve
+```
+
+## Additional Resources
+
+- [Ollama GitHub Repository](https://github.com/ollama/ollama)
+- [Ollama Documentation](https://github.com/ollama/ollama/blob/main/README.md)
+- [DeepSeek Model Information](https://ollama.ai/library/deepseek-r1)
+- [AIDEV Development Guide](development.md)
