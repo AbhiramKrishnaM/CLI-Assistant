@@ -10,7 +10,11 @@ from typing_extensions import Annotated
 
 from cli.commands import api, code, docs, git, terminal
 
-__version__ = importlib.metadata.version("aidev")
+# Try to get version from metadata, otherwise use a default
+try:
+    __version__ = importlib.metadata.version("aidev")
+except importlib.metadata.PackageNotFoundError:
+    __version__ = "0.1.0-dev"  # Fallback version for development
 
 app = typer.Typer(help="AI-powered CLI assistant for developers", add_completion=True)
 
