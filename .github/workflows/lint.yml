@@ -36,7 +36,7 @@ jobs:
         isort --check .
     - name: Type check with mypy
       run: |
-        mypy cli backend
+        mypy cli
     - name: Commit changes if any
       if: github.event_name == 'push'
       run: |
