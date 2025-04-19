@@ -1,4 +1,5 @@
 """API client for interacting with the AI models."""
+
 from typing import Any, Dict, List, Optional
 
 import requests
@@ -140,9 +141,11 @@ def api_request(
         return {
             "error": True,
             "message": str(e),
-            "status_code": e.response.status_code
-            if hasattr(e, "response") and e.response is not None
-            else None,
+            "status_code": (
+                e.response.status_code
+                if hasattr(e, "response") and e.response is not None
+                else None
+            ),
         }
     except Exception as e:
         print(f"[bold red]Unexpected error: [/bold red] {str(e)}")

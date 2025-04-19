@@ -1,4 +1,5 @@
 """AI agent models for the CLI application."""
+
 from typing import Dict, Optional, Type
 
 from .base_model import BaseAIModel

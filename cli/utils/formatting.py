@@ -1,4 +1,5 @@
 """Formatting utilities for the CLI output."""
+
 from contextlib import contextmanager
 from typing import Any, Dict, Generator, List, Optional
 

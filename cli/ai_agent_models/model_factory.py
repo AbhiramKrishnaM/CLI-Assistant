@@ -1,4 +1,5 @@
 """Factory for creating AI model instances."""
+
 from typing import Any, Dict, Optional, cast
 
 from ..utils.config import get_config_value

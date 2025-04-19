@@ -1,4 +1,5 @@
 """Configuration management for the CLI tool."""
+
 import json
 import os
 from typing import Any, Dict

@@ -1,4 +1,5 @@
 """Code generation commands."""
+
 from typing import Optional
 
 import typer

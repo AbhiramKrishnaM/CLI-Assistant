@@ -1,4 +1,5 @@
 """Terminal command suggestions and explanations."""
+
 from typing import List
 
 import typer

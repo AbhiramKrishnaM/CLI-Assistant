@@ -1,4 +1,5 @@
 """Base class for AI model implementations."""
+
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 

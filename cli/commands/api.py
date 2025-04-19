@@ -1,4 +1,5 @@
 """API request testing and formatting."""
+
 import json
 import os
 from datetime import datetime
@@ -272,9 +273,11 @@ def load(
                 endpoint=request_data.get("url", ""),
                 method=request_data.get("method", "GET"),
                 data=json.dumps(data) if data else None,
-                query=json.dumps(request_data.get("query", {}))
-                if request_data.get("query")
-                else None,
+                query=(
+                    json.dumps(request_data.get("query", {}))
+                    if request_data.get("query")
+                    else None
+                ),
             )
 
     except (json.JSONDecodeError, IOError) as e:

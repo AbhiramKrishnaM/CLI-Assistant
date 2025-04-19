@@ -1,4 +1,5 @@
 """AI-powered CLI assistant for developers."""
+
 import importlib.metadata
 import os
 from pathlib import Path

@@ -279,6 +279,39 @@ aidev/
 └── scripts/               # Helper scripts
 ```
 
+### Code Formatting and Linting
+
+This project uses several tools to maintain code quality:
+
+- **Black**: For automatic code formatting
+- **isort**: To sort and organize imports
+- **flake8**: For code linting
+- **mypy**: For static type checking
+
+To format your code before committing:
+
+```bash
+# Use the formatting script (recommended)
+./scripts/format_code.sh
+
+# Or run the tools manually
+black .
+isort .
+```
+
+We also use pre-commit hooks to ensure code quality:
+
+```bash
+# Install pre-commit hooks
+pip install pre-commit
+pre-commit install
+
+# Run the hooks manually (useful before committing)
+pre-commit run --all-files
+```
+
+For detailed information on the coding standards and development workflow, see [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ### Contributing
 
 Interested in contributing? Check out our [Development Guide](docs/development.md) for details on:

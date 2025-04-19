@@ -20,6 +20,10 @@ jobs:
         python -m pip install --upgrade pip
         pip install black flake8 isort mypy
         pip install -r requirements.txt
+    - name: Format code with black and isort
+      run: |
+        black .
+        isort .
     - name: Lint with flake8
       run: |
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
@@ -33,3 +37,11 @@ jobs:
     - name: Type check with mypy
       run: |
         mypy cli backend
+    - name: Commit changes if any
+      if: github.event_name == 'push'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add -A
+        git diff --quiet && git diff --staged --quiet || git commit -m "Auto-format code with black and isort" || true
+        git push || true
