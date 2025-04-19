@@ -46,11 +46,25 @@ After installation, make sure to set up Ollama:
 ollama pull deepseek-r1:7b
 ```
 
+#### Using Clean Install Scripts
+
+If you encounter dependency issues, use our clean install scripts:
+
+```bash
+# On Unix/Linux/Mac
+./scripts/clean_install.sh
+
+# On Windows
+scripts\clean_install.bat
+```
+
+These scripts create a fresh virtual environment and install minimal dependencies directly from pyproject.toml.
+
 #### Installation from Source
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/aidev.git
+   git clone https://github.com/AbhiramKrishnaM/aidev.git
    cd aidev
    ```
 
