@@ -1,5 +1,6 @@
 #!/bin/bash
 # Script to perform a clean installation of aidev with minimal dependencies
+# and setup pre-commit hooks
 
 set -e  # Exit on error
 
@@ -56,6 +57,18 @@ fi
 # Install aidev in development mode
 echo -e "${YELLOW}Installing aidev...${NC}"
 pip install -e .
+
+# Set up pre-commit hooks
+echo -e "${YELLOW}Setting up pre-commit hooks...${NC}"
+pip install pre-commit black flake8 flake8-docstrings isort mypy types-requests
+if [ -f .pre-commit-config.yaml ]; then
+    pre-commit install
+    echo -e "${GREEN}Pre-commit hooks installed.${NC}"
+    echo -e "${YELLOW}Running initial pre-commit check...${NC}"
+    pre-commit run --all-files || true
+else
+    echo -e "${YELLOW}No .pre-commit-config.yaml found. Skipping pre-commit setup.${NC}"
+fi
 
 # Verify installation
 echo -e "${YELLOW}Verifying installation...${NC}"
